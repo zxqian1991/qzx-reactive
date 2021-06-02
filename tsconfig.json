@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmitHelpers": true,
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "removeComments": true,
+    "sourceMap": false,
+    "strict": true,
+    "target": "es5",
+    "declaration": true,
+    "outDir": "dist",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "jsx": "preserve",
+    "jsxFactory": "h"
+  },
+  "include": ["src"],
+  "compileOnSave": false,
+  "buildOnSave": false
+}

@@ -1,0 +1,33 @@
+{
+  "dependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/plugin-proposal-decorators": "^7.14.2",
+    "@babel/plugin-syntax-jsx": "^7.12.13",
+    "@babel/plugin-transform-arrow-functions": "^7.13.0",
+    "@babel/polyfill": "^7.12.1",
+    "@babel/preset-env": "^7.14.4",
+    "@babel/preset-typescript": "^7.13.0",
+    "core-js": "^3.13.1",
+    "html-tags": "^3.1.0",
+    "html-webpack-plugin": "^5.3.1",
+    "qzx-ioc": "^1.1.95",
+    "svg-tags": "^1.0.0",
+    "tslib": "^2.2.0",
+    "webpack": "^5.38.1",
+    "webpack-cli": "3",
+    "webpack-dev-server": "^3.11.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "babel-loader": "^8.0.5"
+  },
+  "scripts": {
+    "dev": "webpack-dev-server"
+  },
+  "browserslist": [
+    "chrome >= 68",
+    "firefox >= 60",
+    "edge >= 41",
+    "ios >= 10"
+  ]
+}
