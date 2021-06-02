@@ -1,4 +1,4 @@
-import { Component, COMPONENT_FLAG } from "./Component";
+import { Component, isComponent } from "./Component";
 import { ITextElement, PropType, IDomPosition } from "./common";
 
 import { FunctionalProp, FunctionalValue, IDomElement } from "./common";
@@ -318,7 +318,7 @@ export default class VirtualElement {
     this.mainTask = undefined;
   }
   exec(): IDomElement[] {
-    if (this.component && (this.component as any)[COMPONENT_FLAG]) {
+    if (isComponent(this.component)) {
       this.isComponent = true;
       return this.execComponent();
     } else if (typeof this.component === "function") {

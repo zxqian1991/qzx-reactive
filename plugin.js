@@ -15,9 +15,32 @@ module.exports = (babel) => {
           path.replaceWith(transformJSXElement(t, path));
         },
       },
+      JSXFragment: {
+        exit(path) {
+          // t.CallExpression('')
+          path.replaceWith(transformJSXFragment(t, path));
+        },
+      },
     },
   };
 };
+
+function transformJSXFragment(t, path) {
+  if (t.isJSXAttribute(path.container)) {
+    throw new Error(
+      `getAttributes (attribute value): ${path.type} is not supported`
+    );
+  }
+  const jsxNode = path.node;
+  const tag = t.stringLiteral("fragment");
+  return t.callExpression(t.identifier("Lazyman.createElement"), [
+    t.numericLiteral(++id),
+    t.arrowFunctionExpression([], t.nullLiteral(), false),
+    tag,
+    t.arrayExpression([]),
+    getChildren(t, jsxNode.children),
+  ]);
+}
 
 function transformJSXElement(t, path) {
   if (t.isJSXAttribute(path.container)) {
@@ -104,6 +127,9 @@ function getChildren(t, children) {
           return transformJSXSpreadChild(t, path);
         }
         if (path.type === "CallExpression") {
+          return path;
+        }
+        if (path.type === "JSXFragment") {
           return path;
         }
         /* istanbul ignore next */

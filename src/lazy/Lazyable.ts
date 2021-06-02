@@ -1,3 +1,4 @@
+import { Component } from "./Component";
 /**是否是代理对象 */
 export const LAZYABLE_FLAG = Symbol("_$$__$$__is_lazyable");
 /**是否是一个已经proxy */
@@ -236,25 +237,36 @@ export function onLazyable(type: LazyableOptType, t: any, h?: any) {
   };
 }
 
+export const STATE_FLAG = Symbol("state_flag");
+export function Stateable() {
+  return function <T extends new (...args: any[]) => any>(target: T) {
+    return class extends target {
+      constructor(...args: any[]) {
+        super(...args);
+        const states = (target.prototype[STATE_FLAG] as string[]) || [];
+        const data = Lazyable({} as Record<string, any>);
+        states.forEach((p) => {
+          data[p] = this[p];
+          Object.defineProperty(this, p, {
+            get() {
+              return Reflect.get(data, p);
+            },
+            set(v) {
+              return Reflect.set(data, p, v);
+            },
+          });
+        });
+      }
+    };
+  };
+}
+
 export function State() {
-  return (target: any, property: string) => {
+  return function (target: any, property: string) {
     // 获取描述符
-    let value = target[property];
-    /**
-     * 当用户设置属性的时候 就相当于在设置temp的属性
-     * 获取属性的时候 获取的也是temp的属性
-     * 因此在记录的时候就能够自动的去发送事件而不用自己单独的去
-     */
-    const temp = Lazyable({
-      [property]: value,
-    } as any);
-    Object.defineProperty(target, property, {
-      get() {
-        return temp[property];
-      },
-      set(v) {
-        temp[property] = v;
-      },
-    });
+    if (!target[STATE_FLAG]) {
+      target[STATE_FLAG] = [];
+    }
+    target[STATE_FLAG].push(property);
   };
 }

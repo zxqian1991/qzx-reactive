@@ -4,7 +4,7 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "lib": ["esnext", "dom", "dom.iterable"],
-    "module": "commonjs",
+    "module": "esnext",
     "moduleResolution": "node",
     "noEmitHelpers": true,
     "noImplicitThis": false,
@@ -20,6 +20,9 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": false,
+    "noEmit": true,
     "jsx": "preserve",
     "jsxFactory": "h"
   },

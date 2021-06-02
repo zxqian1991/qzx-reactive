@@ -2,7 +2,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
 
 const path = require("path");
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const IS_PRODUCTION = true || process.env.NODE_ENV === "production";
 
 module.exports = {
   mode: IS_PRODUCTION ? "production" : "development",
