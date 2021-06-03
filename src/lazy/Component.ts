@@ -5,7 +5,7 @@ export const COMPONENT_FLAG = Symbol("COMPONENT_FLAG");
 
 export class Component<P extends PropType = {}> {
   private _prop?: P;
-  get props(): P {
+  get props(): P & PropType {
     return this._prop! || {};
   }
   onMounted(): void | (() => void) {}

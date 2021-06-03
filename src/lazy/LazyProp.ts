@@ -14,6 +14,8 @@ import VirtualElement from "./VirtualElement";
 export class LazyProp {
   // 对外暴露的prop，是一个lazyable的对象
   private prop: PropType = Lazyable({});
+
+  private preserveProp: PropType = Lazyable({});
   // prop的主任务 用来控制任务的运行
   private mainTask?: LazyTask;
   // 对外暴露的方法，用以获取prop
@@ -22,6 +24,14 @@ export class LazyProp {
   }
   // 存储所有属性的地方(一个属性可能对象都拥有，某一个对象的属性被删除了 下一个要接替。)
   private store = new Map<
+    string | number,
+    {
+      index: number; // 所在位置
+      task: LazyTask;
+    }[]
+  >();
+
+  private preserveStore = new Map<
     string | number,
     {
       index: number; // 所在位置

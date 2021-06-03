@@ -10,7 +10,7 @@ import {
   IDomElement,
 } from "./common";
 import VirtualElement from "./VirtualElement";
-import { formatResult, getElements } from "./VirtualElement";
+import { formatResult } from "./VirtualElement";
 import { lazyDocument } from "./Document";
 import HTMLDOMDrive from "./LazyDom";
 export * from "./utils";

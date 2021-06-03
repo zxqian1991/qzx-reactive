@@ -16,6 +16,7 @@ const FunctionalComponentStoreMap = new Map<
     lazyableData: Record<string, any>[]; // 初始化的数据
     inited: boolean; // 是否已经初始化
     lazyableDataIndex: number; // 当前index
+    onUnmount: null | (() => void);
     unmount: (() => void)[]; // 卸载的时候的回调
     mounted: (() => void)[]; // 组件已装载
   }
@@ -82,18 +83,16 @@ export default class VirtualElement {
         });
         const renderTask = new LazyTask(
           (o2) => {
-            enableSyncArray();
             const result = this.instance?.render();
             // 第一次运行 直接赋值
             if (o2.runTime === 1) {
+              // 对结果做渲染
               const fr = runExcludeTask(() => {
                 const fr = formatResult(result);
-                // 别忘了要执行以下
                 o1.setData(renderResult(fr));
                 return fr;
               });
-
-              disableSyncArray();
+              // 渲染完成后调用mounted函数
               const r = this.instance?.onMounted();
               if (r && typeof r === "function") {
                 unmount.push(r);
@@ -111,18 +110,18 @@ export default class VirtualElement {
               }
             }
           },
-          { debounce: 10 }
+          { debounce: 25 }
         );
         return () => {
           // 停止属性的监听
           this.Prop?.stop();
           // 停止渲染任务
           renderTask.stop();
-          this.instance?.onUnMounted();
           unmount.forEach((r) => r());
+          this.instance?.onUnMounted();
         };
       },
-      { maxRunTime: 1 }
+      { maxRunTime: 1, debounce: 25 }
     );
     return this.mainTask.getData() || [];
   }
@@ -136,19 +135,20 @@ export default class VirtualElement {
         const renderTask = new LazyTask(
           (o2) => {
             // 执行函数 支持hooks基础功能
-            enableSyncArray();
             const result = execFunctionalComponent(ThisFunctionalIndex, () =>
               (this.component as FunctionalComponent<PropType>)(prop)
             );
             if (o2.runTime === 1) {
+              // 渲染结果
               const fr = runExcludeTask(() => {
                 const fr = formatResult(result);
                 o1.setData(renderResult(fr));
                 return fr;
               });
-              disableSyncArray();
               this.result = fr;
+              // 获取数据
               const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
+              // 调用初始化数据
               if (data) {
                 data.mounted.forEach((u) => u());
               }
@@ -165,10 +165,11 @@ export default class VirtualElement {
             return () => {
               const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
               data?.unmount.forEach((u) => u());
+              data?.onUnmount?.();
               FunctionalComponentStoreMap.delete(ThisFunctionalIndex);
             };
           },
-          { debounce: 10 }
+          { debounce: 25 }
         );
         return () => {
           this.Prop?.stop();
@@ -177,6 +178,7 @@ export default class VirtualElement {
       },
       {
         maxRunTime: 1,
+        debounce: 25,
       }
     );
     return this.mainTask.getData() || [];
@@ -195,7 +197,6 @@ export default class VirtualElement {
                 if (children.length <= 0)
                   throw new Error("formatted fragment can not be Empty");
                 const h = children[0] as FunctionalValue;
-                enableSyncArray();
                 const res = h();
                 const fr = runExcludeTask(() => {
                   return formatResult(res);
@@ -204,7 +205,6 @@ export default class VirtualElement {
                   runExcludeTask(() => {
                     o1.setData(renderResult(fr));
                   });
-                  disableSyncArray();
                   this.result = fr;
                 } else {
                   const { result: Res, elements } = diffResult(
@@ -230,11 +230,11 @@ export default class VirtualElement {
                 }
               }
             },
-            { debounce: true } // DEBOUNCE必不可少 否则数组变化时可能出现问题
+            { debounce: 25 } // DEBOUNCE必不可少 否则数组变化时可能出现问题
           )
         );
       },
-      { maxRunTime: 1 }
+      { maxRunTime: 1, debounce: 25 }
     );
     return this.mainTask.getData() || [];
   }
@@ -280,7 +280,7 @@ export default class VirtualElement {
                   cb(o3.getTask());
                 }
               },
-              { debounce: 10 }
+              { debounce: 25 }
             );
           } else {
             // 正常的属性
@@ -326,6 +326,7 @@ export default class VirtualElement {
       },
       {
         maxRunTime: 1,
+        debounce: 25,
       }
     );
     return this.mainTask.getData() || [];
@@ -355,14 +356,16 @@ export default class VirtualElement {
     return getElements(formatResult(this.result));
   }
   unmount(): IDomPosition | undefined {
-    // 先停止任务
-    this.stop();
     if (this.isNative) {
+      this.stop();
       const position = lazyDocument.getPosition([this.native!]);
       this.native?.remove();
       return position;
     } else {
-      return this.result && unmountResult(this.result);
+      const position = this.result && unmountResult(this.result);
+      // 先结束子节点
+      this.stop();
+      return position;
     }
   }
 }
@@ -472,6 +475,7 @@ function execFunctionalComponent<P extends PropType>(
       lazyableDataIndex: 0,
       unmount: [],
       mounted: [],
+      onUnmount: null,
     });
   }
   // 执行
@@ -522,7 +526,7 @@ export function useUnMounted(func: () => void) {
   assertInFunctionComponent();
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
   if (!data.inited) {
-    data.unmount.push(func);
+    data.onUnmount = func;
   }
 }
 
@@ -672,138 +676,3 @@ export function diffResult(
   lazyDocument.insertElements(doms, position);
   return { result: newResult, elements: doms };
 }
-
-let ENABLE_SYNC_ARR = false;
-export function enableSyncArray() {
-  ENABLE_SYNC_ARR = true;
-}
-export function disableSyncArray() {
-  ENABLE_SYNC_ARR = false;
-}
-
-// transformLazyable((res, t, k, R) => {
-//   const tempRunningTask = getRunningTask();
-//   if (!tempRunningTask || !ENABLE_SYNC_ARR) return res;
-//   switch (k) {
-//     // 处理下map
-//     case "map":
-//       return function (handler: (v: any, i: number, a: any[]) => any) {
-//         const arr: any[] = Lazyable([]);
-//         const rawArr = Raw(arr);
-//         const rawThis = Raw(this);
-//         const subTasks: LazyTask[] = [];
-//         console.log("new map beginning");
-//         tempRunningTask.addSubTask(
-//           new LazyTask(
-//             (o) => {
-//               if (o.runTime === 1) {
-//                 for (let i = 0; i < this.length; i++) {
-//                   subTasks.push(
-//                     new LazyTask(
-//                       (o1) => {
-//                         if (o1.runTime === 1) {
-//                           rawArr.push(handler(this[i], i, rawArr));
-//                         } else {
-//                           // 表示你已经没了
-//                           if (i >= rawThis.length) {
-//                             return;
-//                           }
-//                           const value = handler(this[i], i, rawArr);
-//                           if (rawArr[i] !== value) {
-//                             if (isFormattedArray(this)) {
-//                               console.log(this, i, value, rawArr[i]);
-//                               const { result } = diffResult(value, rawArr[i]);
-//                               if (result !== rawArr[i]) {
-//                                 arr[i] = result;
-//                               }
-//                             } else {
-//                               arr[i] = value;
-//                             }
-//                           }
-//                         }
-//                       },
-//                       { debounce: 25 }
-//                     )
-//                   );
-//                 }
-//               } else {
-//                 const rawLen = rawArr.length;
-//                 const nowLen = this.length;
-//                 // 长度增加了
-//                 if (nowLen > rawLen) {
-//                   for (let i = rawLen; i < nowLen; i++) {
-//                     subTasks.push(
-//                       new LazyTask(
-//                         (o1) => {
-//                           if (o1.runTime === 1) {
-//                             const value = handler(this[i], i, arr);
-//                             o1.except(() => {
-//                               arr.push(value);
-//                             });
-//                           } else {
-//                             const value = handler(this[i], i, arr);
-//                             if (rawArr[i] !== value) {
-//                               arr[i] = value;
-//                             }
-//                           }
-//                         },
-//                         {
-//                           debounce: 25,
-//                         }
-//                       )
-//                     );
-//                   }
-//                 } else if (nowLen < rawLen) {
-//                   const gap = rawLen - nowLen;
-//                   for (let i = 0; i < gap; i++) {
-//                     o.except(() => {
-//                       const task = subTasks.pop();
-//                       task?.stop();
-//                     });
-//                   }
-//                 }
-//               }
-//               return () => subTasks.forEach((t) => t.stop());
-//             }
-//             // { debounce: 25 }
-//           )
-//         );
-//         return arr;
-//       };
-//     // 处理下过滤器
-//     case "filter":
-//       return function (handler: (v: any, i: number) => boolean) {
-//         const arr: any[] = Lazyable([]);
-//         const rawArr = Raw(arr);
-//         tempRunningTask.addSubTask(
-//           new LazyTask((o) => {
-//             const tarr: any[] = [];
-//             for (let i = 0; i < this.length; i++) {
-//               const condition = handler(this[i], i);
-//               if (condition) tarr.push(this[i]);
-//             }
-//             if (rawArr.length > tarr.length) {
-//               const gap = tarr.length - rawArr.length;
-//               for (let i = 0; i < gap; i++) {
-//                 o.except(() => arr.pop());
-//               }
-//             }
-//             for (let i = 0; i < tarr.length; i++) {
-//               if (i >= rawArr.length) {
-//                 o.except(() => {
-//                   arr.push(tarr[i]);
-//                 });
-//               } else if (rawArr[i] !== tarr[i]) {
-//                 o.except(() => {
-//                   arr[i] = tarr[i];
-//                 });
-//               }
-//             }
-//           })
-//         );
-//         return arr;
-//       };
-//     default:
-//       return res;
-//   }
-// });

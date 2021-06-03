@@ -40,3 +40,11 @@ export interface IDomElement {
 }
 
 export interface ITextElement extends IDomElement {}
+
+export interface IDirectiveOption<T> {
+  param?: T; // 指令被传递的参数
+  onCreated?: () => void | (() => void);
+  onMounted?: () => void | (() => void);
+}
+
+export interface IDirectives {}
