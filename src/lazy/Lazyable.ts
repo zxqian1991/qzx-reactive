@@ -239,15 +239,31 @@ export function onLazyable(type: LazyableOptType, t: any, h?: any) {
 }
 
 export const STATE_FLAG = Symbol("state_flag");
-export function Stateable() {
+export function Stateable({ forceAll = false }: { forceAll?: boolean } = {}) {
   return function <T extends new (...args: any[]) => any>(target: T) {
     return class extends target {
       constructor(...args: any[]) {
         super(...args);
-        const states = (target.prototype[STATE_FLAG] as string[]) || [];
         const data = Lazyable({} as Record<string, any>);
+        const rawData = Raw(data);
+        if (forceAll) {
+          for (let p in this) {
+            rawData[p] = this[p];
+            Object.defineProperty(this, p, {
+              get() {
+                return Reflect.get(data, p);
+              },
+              set(v) {
+                return Reflect.set(data, p, v);
+              },
+            });
+          }
+          return;
+        }
+        const states = (target.prototype[STATE_FLAG] as string[]) || [];
+
         states.forEach((p) => {
-          data[p] = this[p];
+          rawData[p] = this[p];
           Object.defineProperty(this, p, {
             get() {
               return Reflect.get(data, p);

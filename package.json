@@ -1,4 +1,6 @@
 {
+  "name": "lazyx",
+  "version": "1.0.0",
   "dependencies": {
     "@babel/core": "^7.14.3",
     "@babel/plugin-proposal-class-properties": "^7.13.0",
@@ -11,7 +13,6 @@
     "core-js": "^3.13.1",
     "html-tags": "^3.1.0",
     "html-webpack-plugin": "^5.3.1",
-    "qzx-ioc": "^1.1.95",
     "svg-tags": "^1.0.0",
     "tslib": "^2.2.0",
     "webpack": "^5.38.1",

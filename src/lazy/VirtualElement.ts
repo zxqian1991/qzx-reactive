@@ -110,7 +110,7 @@ export default class VirtualElement {
               }
             }
           },
-          { debounce: 25 }
+          { debounce: 0 }
         );
         return () => {
           // 停止属性的监听
@@ -121,7 +121,7 @@ export default class VirtualElement {
           this.instance?.onUnMounted();
         };
       },
-      { maxRunTime: 1, debounce: 25 }
+      { maxRunTime: 1, debounce: 0 }
     );
     return this.mainTask.getData() || [];
   }
@@ -169,7 +169,7 @@ export default class VirtualElement {
               FunctionalComponentStoreMap.delete(ThisFunctionalIndex);
             };
           },
-          { debounce: 25 }
+          { debounce: 0 }
         );
         return () => {
           this.Prop?.stop();
@@ -178,7 +178,7 @@ export default class VirtualElement {
       },
       {
         maxRunTime: 1,
-        debounce: 25,
+        debounce: 0,
       }
     );
     return this.mainTask.getData() || [];
@@ -230,11 +230,11 @@ export default class VirtualElement {
                 }
               }
             },
-            { debounce: 25 } // DEBOUNCE必不可少 否则数组变化时可能出现问题
+            { debounce: 0 } // DEBOUNCE必不可少 否则数组变化时可能出现问题
           )
         );
       },
-      { maxRunTime: 1, debounce: 25 }
+      { maxRunTime: 1, debounce: 0 }
     );
     return this.mainTask.getData() || [];
   }
@@ -280,7 +280,7 @@ export default class VirtualElement {
                   cb(o3.getTask());
                 }
               },
-              { debounce: 25 }
+              { debounce: 0 }
             );
           } else {
             // 正常的属性
@@ -326,7 +326,7 @@ export default class VirtualElement {
       },
       {
         maxRunTime: 1,
-        debounce: 25,
+        debounce: 0,
       }
     );
     return this.mainTask.getData() || [];
@@ -552,6 +552,7 @@ export function diffResult(
   oldResult: FormattedElementResultType
 ): { result: FormattedElementResultType; elements?: IDomElement[] } {
   // 都是虚拟DOM 看类型是否一样
+  console.log("diff");
   if (
     newResult instanceof VirtualElement &&
     oldResult instanceof VirtualElement &&

@@ -6,8 +6,6 @@
  * @desc [异步相关的处理]
  */
 
-import { resolve } from "node:path";
-
 export class XPromise {
   private promise?: Promise<any>;
   resolve?: (v?: any) => void;
