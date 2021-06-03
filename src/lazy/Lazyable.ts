@@ -127,8 +127,9 @@ export function Lazyable<T extends object>(
       }
       const Rv = hasTargetLazyabled(v)
         ? (getLazyableRawData(v) as any)?.[LAZYABLE_FLAG] // 已经是代理对象了 获取这个对象存储的代理结果
-        : v?.__proto__ === ([] as any).__proto__ ||
-          v?.__proto__ === ({} as any).__proto__ // 是一个普通的对象而非一个类
+        : k !== "__proto__" &&
+          (v?.__proto__ === ([] as any).__proto__ ||
+            v?.__proto__ === ({} as any).__proto__) // 是一个普通的对象而非一个类
         ? Lazyable(v) // 响应化
         : v;
       onLazyableOpt(GET_HANDLERS_MAP, t, t, k, Rv);

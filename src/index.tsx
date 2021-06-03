@@ -5,14 +5,18 @@ import HTMLDOMDrive from "./lazy/LazyDom";
 import { generateArray } from "./lazy/utils/Array";
 
 const data = Lazyable({
-  ref: undefined,
-  count: 1,
-  arr: generateArray(4, (i) => i),
+  arr: generateArray(3, (i) => i + i),
 } as { count: number; arr: number[]; ref: any });
 Lazyman.drive(HTMLDOMDrive);
 Lazyman.render(
-  <div onClick={() => data.count++}>
-    <>{data.count}</>
+  <div>
+    {data.arr.map((i, index) => (
+      <div key={index} onClick={() => data.arr[index]++}>
+        {i}
+      </div>
+    ))}
+    <button onClick={() => data.arr.push(data.arr.length)}>增加数字</button>
+    <button onClick={() => data.arr.pop()}>减少数字</button>
   </div>,
   lazyDocument.querySelector("#root")!
 );

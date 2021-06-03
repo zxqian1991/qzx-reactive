@@ -70,6 +70,7 @@ export class LazyProp {
           [i as FunctionalValue]
         )
     );
+
     // 给children重新赋值 这回触发更新 更新时根据key + fragment进行对比
     this.prop.children = result;
   }

@@ -3,9 +3,9 @@ import { ITextElement, PropType, IDomPosition } from "./common";
 
 import { FunctionalProp, FunctionalValue, IDomElement } from "./common";
 import { lazyDocument } from "./Document";
-import { Lazyable, onLazyable, Raw } from "./Lazyable";
+import { Lazyable, onLazyable, Raw, transformLazyable } from "./Lazyable";
 import { flattern } from "./utils";
-import { LazyTask, runExcludeTask } from "./LazyTask";
+import { LazyTask, runExcludeTask, getRunningTask } from "./LazyTask";
 import { LazyProp } from "./LazyProp";
 
 let FunctionalComponentIndex = 0;
@@ -82,12 +82,18 @@ export default class VirtualElement {
         });
         const renderTask = new LazyTask(
           (o2) => {
+            enableSyncArray();
             const result = this.instance?.render();
             // 第一次运行 直接赋值
             if (o2.runTime === 1) {
-              const fr = formatResult(result);
-              // 别忘了要执行以下
-              o1.setData(renderResult(fr));
+              const fr = runExcludeTask(() => {
+                const fr = formatResult(result);
+                // 别忘了要执行以下
+                o1.setData(renderResult(fr));
+                return fr;
+              });
+
+              disableSyncArray();
               const r = this.instance?.onMounted();
               if (r && typeof r === "function") {
                 unmount.push(r);
@@ -130,12 +136,17 @@ export default class VirtualElement {
         const renderTask = new LazyTask(
           (o2) => {
             // 执行函数 支持hooks基础功能
+            enableSyncArray();
             const result = execFunctionalComponent(ThisFunctionalIndex, () =>
               (this.component as FunctionalComponent<PropType>)(prop)
             );
             if (o2.runTime === 1) {
-              const fr = formatResult(result);
-              o1.setData(renderResult(fr));
+              const fr = runExcludeTask(() => {
+                const fr = formatResult(result);
+                o1.setData(renderResult(fr));
+                return fr;
+              });
+              disableSyncArray();
               this.result = fr;
               const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
               if (data) {
@@ -184,10 +195,16 @@ export default class VirtualElement {
                 if (children.length <= 0)
                   throw new Error("formatted fragment can not be Empty");
                 const h = children[0] as FunctionalValue;
+                enableSyncArray();
                 const res = h();
-                const fr = formatResult(res);
+                const fr = runExcludeTask(() => {
+                  return formatResult(res);
+                });
                 if (o2.runTime === 1) {
-                  o1.setData(renderResult(fr));
+                  runExcludeTask(() => {
+                    o1.setData(renderResult(fr));
+                  });
+                  disableSyncArray();
                   this.result = fr;
                 } else {
                   const { result: Res, elements } = diffResult(
@@ -334,6 +351,7 @@ export default class VirtualElement {
     return [];
   }
   getElements(): IDomElement[] {
+    if (this.isNative) return [this.native!];
     return getElements(formatResult(this.result));
   }
   unmount(): IDomPosition | undefined {
@@ -354,11 +372,21 @@ export default class VirtualElement {
  * @param result
  * @returns
  */
+export const FORMATTED_ARRAY = Symbol("FORMATTED_ARRAY");
+
+export function isFormattedArray(arr: any) {
+  return arr && arr[FORMATTED_ARRAY];
+}
 export function formatResult(
   result: ElementResultType | FormattedElementResultType
 ): FormattedElementResultType {
   if (Array.isArray(result) && result.length > 0) {
-    return result.map((i: any) => formatResult(i));
+    return new Proxy(result, {
+      get(t, k, r) {
+        if (k === FORMATTED_ARRAY) return true;
+        return Reflect.get(t, k, r);
+      },
+    }).map((i: any) => formatResult(i));
   } else if (lazyDocument.isTextElement(result)) {
     return result as ITextElement;
   } else if (result instanceof VirtualElement) {
@@ -644,3 +672,138 @@ export function diffResult(
   lazyDocument.insertElements(doms, position);
   return { result: newResult, elements: doms };
 }
+
+let ENABLE_SYNC_ARR = false;
+export function enableSyncArray() {
+  ENABLE_SYNC_ARR = true;
+}
+export function disableSyncArray() {
+  ENABLE_SYNC_ARR = false;
+}
+
+// transformLazyable((res, t, k, R) => {
+//   const tempRunningTask = getRunningTask();
+//   if (!tempRunningTask || !ENABLE_SYNC_ARR) return res;
+//   switch (k) {
+//     // 处理下map
+//     case "map":
+//       return function (handler: (v: any, i: number, a: any[]) => any) {
+//         const arr: any[] = Lazyable([]);
+//         const rawArr = Raw(arr);
+//         const rawThis = Raw(this);
+//         const subTasks: LazyTask[] = [];
+//         console.log("new map beginning");
+//         tempRunningTask.addSubTask(
+//           new LazyTask(
+//             (o) => {
+//               if (o.runTime === 1) {
+//                 for (let i = 0; i < this.length; i++) {
+//                   subTasks.push(
+//                     new LazyTask(
+//                       (o1) => {
+//                         if (o1.runTime === 1) {
+//                           rawArr.push(handler(this[i], i, rawArr));
+//                         } else {
+//                           // 表示你已经没了
+//                           if (i >= rawThis.length) {
+//                             return;
+//                           }
+//                           const value = handler(this[i], i, rawArr);
+//                           if (rawArr[i] !== value) {
+//                             if (isFormattedArray(this)) {
+//                               console.log(this, i, value, rawArr[i]);
+//                               const { result } = diffResult(value, rawArr[i]);
+//                               if (result !== rawArr[i]) {
+//                                 arr[i] = result;
+//                               }
+//                             } else {
+//                               arr[i] = value;
+//                             }
+//                           }
+//                         }
+//                       },
+//                       { debounce: 25 }
+//                     )
+//                   );
+//                 }
+//               } else {
+//                 const rawLen = rawArr.length;
+//                 const nowLen = this.length;
+//                 // 长度增加了
+//                 if (nowLen > rawLen) {
+//                   for (let i = rawLen; i < nowLen; i++) {
+//                     subTasks.push(
+//                       new LazyTask(
+//                         (o1) => {
+//                           if (o1.runTime === 1) {
+//                             const value = handler(this[i], i, arr);
+//                             o1.except(() => {
+//                               arr.push(value);
+//                             });
+//                           } else {
+//                             const value = handler(this[i], i, arr);
+//                             if (rawArr[i] !== value) {
+//                               arr[i] = value;
+//                             }
+//                           }
+//                         },
+//                         {
+//                           debounce: 25,
+//                         }
+//                       )
+//                     );
+//                   }
+//                 } else if (nowLen < rawLen) {
+//                   const gap = rawLen - nowLen;
+//                   for (let i = 0; i < gap; i++) {
+//                     o.except(() => {
+//                       const task = subTasks.pop();
+//                       task?.stop();
+//                     });
+//                   }
+//                 }
+//               }
+//               return () => subTasks.forEach((t) => t.stop());
+//             }
+//             // { debounce: 25 }
+//           )
+//         );
+//         return arr;
+//       };
+//     // 处理下过滤器
+//     case "filter":
+//       return function (handler: (v: any, i: number) => boolean) {
+//         const arr: any[] = Lazyable([]);
+//         const rawArr = Raw(arr);
+//         tempRunningTask.addSubTask(
+//           new LazyTask((o) => {
+//             const tarr: any[] = [];
+//             for (let i = 0; i < this.length; i++) {
+//               const condition = handler(this[i], i);
+//               if (condition) tarr.push(this[i]);
+//             }
+//             if (rawArr.length > tarr.length) {
+//               const gap = tarr.length - rawArr.length;
+//               for (let i = 0; i < gap; i++) {
+//                 o.except(() => arr.pop());
+//               }
+//             }
+//             for (let i = 0; i < tarr.length; i++) {
+//               if (i >= rawArr.length) {
+//                 o.except(() => {
+//                   arr.push(tarr[i]);
+//                 });
+//               } else if (rawArr[i] !== tarr[i]) {
+//                 o.except(() => {
+//                   arr[i] = tarr[i];
+//                 });
+//               }
+//             }
+//           })
+//         );
+//         return arr;
+//       };
+//     default:
+//       return res;
+//   }
+// });
