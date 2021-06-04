@@ -6,7 +6,7 @@ import { generateArray } from "./lazy/utils/Array";
 
 const data = Lazyable({
   count: 0,
-  arr: generateArray(5, (i) => ({ value: i })),
+  arr: generateArray(7000, (i) => ({ value: i })),
 } as { count: number; arr: { value: number }[]; ref: any; size: number });
 Lazyman.drive(HTMLDOMDrive);
 Lazyman.render(

@@ -42,6 +42,7 @@ export interface ILazyTaskHandlerOption<T = any> {
   addSubTask: (subTask: LazyTask) => void;
   removeSubTask: (subTask: LazyTask, stop?: boolean) => void;
   stop: () => void;
+  id: number;
 }
 export interface ILazyTaskOption {
   autoRun?: boolean; // 是否自动的执行
@@ -49,6 +50,7 @@ export interface ILazyTaskOption {
   autoUnsub?: boolean;
   notRecord?: (t: any, k: string | number, v: any) => boolean; // 有可能有的值不需要被记录 这里需要记录
 }
+let id = 0;
 export class LazyTask<T = any> {
   private stopped = false;
 
@@ -57,6 +59,8 @@ export class LazyTask<T = any> {
   private data?: T;
 
   private time = 0;
+
+  public id = id++;
   private changeReasons: TaskChangeReason[] = [];
 
   private canRecordRely = true;
@@ -98,6 +102,7 @@ export class LazyTask<T = any> {
     removeRely(this);
     this.unsub =
       this.handler({
+        id: this.id,
         runTime: ++this.time,
         except: this.except,
         getData: this.getData,
@@ -231,7 +236,8 @@ onLazyable("get", (t, k, v) => {
 
 let tasksToRun: LazyTask[] = [];
 let isInLifeCycle = false;
-const lifeCycleGap = 0;
+let maxChunkSize = 5; // 最多可以一起执行的任务shu
+const lifeCycleGap = 10;
 function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
   task.addReason(reasons);
   removeRely(task);
@@ -245,8 +251,12 @@ function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
       isInLifeCycle = false;
       const tasks = tasksToRun;
       tasksToRun = [];
-      for (let i = 0; i < tasks.length; i++) {
-        tasks[i].restart();
+      for (let i = 0; i < tasks.length; i += maxChunkSize) {
+        const cmax = i + maxChunkSize;
+        const max = cmax >= tasks.length ? tasks.length - 1 : cmax;
+        for (let j = i; j < max; j++) {
+          tasks[j].restart();
+        }
         await lazyDocument.canRunning();
       }
     }, lifeCycleGap);
