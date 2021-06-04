@@ -1,6 +1,6 @@
 import { PropType, FunctionalValue, FunctionalProp } from "./common";
 import { Lazyable, Raw, onLazyable } from "./Lazyable";
-import { LazyTask } from "./LazyTask";
+import { LazyTask, getRunningTask } from "./LazyTask";
 import VirtualElement from "./VirtualElement";
 
 /**
@@ -14,8 +14,6 @@ import VirtualElement from "./VirtualElement";
 export class LazyProp {
   // 对外暴露的prop，是一个lazyable的对象
   private prop: PropType = Lazyable({});
-
-  private preserveProp: PropType = Lazyable({});
   // prop的主任务 用来控制任务的运行
   private mainTask?: LazyTask;
   // 对外暴露的方法，用以获取prop
@@ -31,13 +29,6 @@ export class LazyProp {
     }[]
   >();
 
-  private preserveStore = new Map<
-    string | number,
-    {
-      index: number; // 所在位置
-      task: LazyTask;
-    }[]
-  >();
   private id!: number | string;
   private key?: FunctionalValue;
   private props: FunctionalProp[] = [];
@@ -69,6 +60,7 @@ export class LazyProp {
       this.prop.children = this.children;
       return;
     }
+
     // fragment类型的数据不用处理
     const result = this.children.map(
       (i, index) =>
@@ -80,9 +72,8 @@ export class LazyProp {
           [i as FunctionalValue]
         )
     );
-
-    // 给children重新赋值 这回触发更新 更新时根据key + fragment进行对比
     this.prop.children = result;
+    // 给children重新赋值 这回触发更新 更新时根据key + fragment进行对比
   }
 
   /**
@@ -167,7 +158,7 @@ export class LazyProp {
         filtResult.length > 0 &&
         filtResult[filtResult.length - 1].task.hasStopped()
       ) {
-        filtResult[filtResult.length - 1].task.restart([], true);
+        filtResult[filtResult.length - 1].task.restart(true);
       }
       this.store.set(property, filtResult);
     }

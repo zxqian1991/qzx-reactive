@@ -81,39 +81,40 @@ export default class VirtualElement {
             unmount.push(r);
           }
         });
-        const renderTask = new LazyTask((o2) => {
-          const result = this.instance?.render();
-          // 第一次运行 直接赋值
-          if (o2.runTime === 1) {
-            // 对结果做渲染
-            const fr = runExcludeTask(() => {
-              const fr = formatResult(result);
-              o1.setData(renderResult(fr));
-              return fr;
-            });
-            // 渲染完成后调用mounted函数
-            const r = this.instance?.onMounted();
-            if (r && typeof r === "function") {
-              unmount.push(r);
-            }
-            this.result = fr;
-          } else {
-            // 非第一次，要比较 并返回最新结果
-            diffResult(o2.id, formatResult(result), this.result!).then(
-              ({ result: Res, elements }) => {
-                this.result = Res;
-                if (elements && elements.length > 0) {
-                  o1.setData(elements);
-                }
+        o1.addSubTask(
+          new LazyTask((o2) => {
+            const result = this.instance?.render();
+            // 第一次运行 直接赋值
+            if (o2.runTime === 1) {
+              // 对结果做渲染
+              const fr = runExcludeTask(() => {
+                const fr = formatResult(result);
+                o1.setData(renderResult(fr));
+                return fr;
+              });
+              // 渲染完成后调用mounted函数
+              const r = this.instance?.onMounted();
+              if (r && typeof r === "function") {
+                unmount.push(r);
               }
-            );
-          }
-        });
+              this.result = fr;
+            } else {
+              // 非第一次，要比较 并返回最新结果
+              diffResult(o2.id, formatResult(result), this.result!).then(
+                ({ result: Res, elements }) => {
+                  this.result = Res;
+                  if (elements && elements.length > 0) {
+                    o1.setData(elements);
+                  }
+                }
+              );
+            }
+          })
+        );
         return () => {
           // 停止属性的监听
           this.Prop?.stop();
           // 停止渲染任务
-          renderTask.stop();
           unmount.forEach((r) => r());
           this.instance?.onUnMounted();
         };
@@ -125,49 +126,50 @@ export default class VirtualElement {
   private execFunctional(): IDomElement[] {
     this.mainTask = new LazyTask<IDomElement[]>(
       (o1) => {
-        this.Prop = new LazyProp(this);
+        o1.except(() => (this.Prop = new LazyProp(this)));
         // 设置当前函数组件的一个唯一ID
         const ThisFunctionalIndex = ++FunctionalComponentIndex;
         const prop = this.Prop?.getProp();
-        const renderTask = new LazyTask((o2) => {
-          // 执行函数 支持hooks基础功能
-          const result = execFunctionalComponent(ThisFunctionalIndex, () =>
-            (this.component as FunctionalComponent<PropType>)(prop)
-          );
-          if (o2.runTime === 1) {
-            // 渲染结果
-            const fr = runExcludeTask(() => {
-              const fr = formatResult(result);
-              o1.setData(renderResult(fr));
-              return fr;
-            });
-            this.result = fr;
-            // 获取数据
-            const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
-            // 调用初始化数据
-            if (data) {
-              data.mounted.forEach((u) => u());
-            }
-          } else {
-            diffResult(o2.id, formatResult(result), this.result!).then(
-              ({ result: Res, elements }) => {
-                this.result = Res;
-                if (elements && elements.length > 0) {
-                  o1.setData(elements);
-                }
-              }
+        o1.addSubTask(
+          new LazyTask((o2) => {
+            // 执行函数 支持hooks基础功能
+            const result = execFunctionalComponent(ThisFunctionalIndex, () =>
+              (this.component as FunctionalComponent<PropType>)(prop)
             );
-          }
-          return () => {
-            const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
-            data?.unmount.forEach((u) => u());
-            data?.onUnmount?.();
-            FunctionalComponentStoreMap.delete(ThisFunctionalIndex);
-          };
-        });
+            if (o2.runTime === 1) {
+              // 渲染结果
+              const fr = runExcludeTask(() => {
+                const fr = formatResult(result);
+                o1.setData(renderResult(fr));
+                return fr;
+              });
+              this.result = fr;
+              // 获取数据
+              const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
+              // 调用初始化数据
+              if (data) {
+                data.mounted.forEach((u) => u());
+              }
+            } else {
+              diffResult(o2.id, formatResult(result), this.result!).then(
+                ({ result: Res, elements }) => {
+                  this.result = Res;
+                  if (elements && elements.length > 0) {
+                    o1.setData(elements);
+                  }
+                }
+              );
+            }
+            return () => {
+              const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
+              data?.unmount.forEach((u) => u());
+              data?.onUnmount?.();
+              FunctionalComponentStoreMap.delete(ThisFunctionalIndex);
+            };
+          })
+        );
         return () => {
           this.Prop?.stop();
-          renderTask.stop();
         };
       },
       {
@@ -180,7 +182,10 @@ export default class VirtualElement {
     this.mainTask = new LazyTask<IDomElement[]>(
       (o1) => {
         // 这是被处理过的fragment
-        this.Prop = new LazyProp(this);
+
+        this.Prop = o1.except(() => {
+          return new LazyProp(this);
+        });
         const prop = this.Prop.getProp();
         o1.addSubTask(
           new LazyTask((o2) => {
@@ -237,7 +242,7 @@ export default class VirtualElement {
       (o1) => {
         const component = this.component as string;
         this.native = lazyDocument.createElement(component);
-        this.Prop = new LazyProp(this);
+        this.Prop = o1.except(() => new LazyProp(this));
         o1.setData([this.native!]);
         const prop = this.Prop.getProp();
         const rawProp = Raw(prop);
@@ -298,24 +303,25 @@ export default class VirtualElement {
             });
           }
         };
-        const renderTask = new LazyTask((o2) => {
-          // 处理所有的属性 同时要注意新增属性的情况
-          const unsub = onLazyable("add", prop, (t, k) => {
-            o2.addSubTask(
-              handle(k as string, (t) => o2.removeSubTask(t, true))
-            );
-          });
-          for (let i in prop) {
-            o2.addSubTask(handle(i, (t) => o2.removeSubTask(t, true)));
-          }
-          return () => {
-            // 停止所有的任务
-            unsub();
-          };
-        });
+        o1.addSubTask(
+          new LazyTask((o2) => {
+            // 处理所有的属性 同时要注意新增属性的情况
+            const unsub = onLazyable("add", prop, (t, k) => {
+              o2.addSubTask(
+                handle(k as string, (t) => o2.removeSubTask(t, true))
+              );
+            });
+            for (let i in prop) {
+              o2.addSubTask(handle(i, (t) => o2.removeSubTask(t, true)));
+            }
+            return () => {
+              // 停止所有的任务
+              unsub();
+            };
+          })
+        );
         return () => {
           this.Prop?.stop();
-          renderTask.stop();
         };
       },
       {
@@ -350,6 +356,7 @@ export default class VirtualElement {
   }
   unmount(): IDomPosition | undefined {
     if (this.isNative) {
+      this.result && unmountResult(this.result);
       this.stop();
       const position = lazyDocument.getPosition([this.native!]);
       this.native?.remove();
@@ -549,6 +556,7 @@ export async function diffResult(
   if (runnningDiffTasks.has(id)) {
     runnningDiffTasks.get(id)?.stop();
   }
+  console.log("diff", newResult, oldResult);
   return new Promise((resolve, reject) => {
     const mainTask = new LazyTask(() => {});
     runnningDiffTasks.set(id, mainTask);
@@ -563,7 +571,8 @@ export async function diffResult(
           if (
             newResult instanceof VirtualElement &&
             oldResult instanceof VirtualElement &&
-            newResult.component === oldResult.component
+            newResult.component === oldResult.component &&
+            newResult.id === oldResult.id
           ) {
             oldResult.Prop?.update(
               newResult.id,
@@ -622,38 +631,40 @@ export async function diffResult(
                     }
                     usedOldIndex.add(oldPosition);
                     const or = oldResult[oldPosition] as VirtualElement;
-                    or.Prop?.update(r.id, r.props, r.children);
-                    newReturnResult.push(or);
-                    const newElements = or.getElements();
-                    returnElements.push(newElements);
-                    // 老结果的位置就是当前nextElement所在的那个index的位置  那就更新老结果
-                    if (oldPosition === positionIndex) {
-                      while (positionIndex < oldResult.length) {
-                        positionIndex++;
-                        if (positionIndex >= oldResult.length) {
-                          nextElement =
-                            elements[elements.length - 1].nextSibling;
-                          parent = nextElement?.parent || parent;
-                        } else if (!usedOldIndex.has(positionIndex)) {
-                          // 这个位置的元素可能已经被用过了 要忽略
-                          // 如果这个位置没被用过 那就要用起来
-                          elements = getElements(oldResult[positionIndex]);
-                          nextElement = elements[0];
-                          parent = nextElement.parent || parent;
-                          // 跳出循环
-                          break;
+                    if (or.id === r.id) {
+                      or.Prop?.update(r.id, r.props, r.children);
+                      newReturnResult.push(or);
+                      const newElements = or.getElements();
+                      returnElements.push(newElements);
+                      // 老结果的位置就是当前nextElement所在的那个index的位置  那就更新老结果
+                      if (oldPosition === positionIndex) {
+                        while (positionIndex < oldResult.length) {
+                          positionIndex++;
+                          if (positionIndex >= oldResult.length) {
+                            nextElement =
+                              elements[elements.length - 1].nextSibling;
+                            parent = nextElement?.parent || parent;
+                          } else if (!usedOldIndex.has(positionIndex)) {
+                            // 这个位置的元素可能已经被用过了 要忽略
+                            // 如果这个位置没被用过 那就要用起来
+                            elements = getElements(oldResult[positionIndex]);
+                            nextElement = elements[0];
+                            parent = nextElement.parent || parent;
+                            // 跳出循环
+                            break;
+                          }
                         }
+                      } else {
+                        // 在老结果中有对应的元素   不管在哪里 他肯定要移到nextElement前面
+                        // newElements.forEach((r) => r.remove());
+                        lazyDocument.insertElements(newElements, {
+                          parent,
+                          nextSibling: nextElement,
+                          preSibling: nextElement?.preSibling || null,
+                        });
                       }
-                    } else {
-                      // 在老结果中有对应的元素   不管在哪里 他肯定要移到nextElement前面
-                      // newElements.forEach((r) => r.remove());
-                      lazyDocument.insertElements(newElements, {
-                        parent,
-                        nextSibling: nextElement,
-                        preSibling: nextElement?.preSibling || null,
-                      });
+                      continue;
                     }
-                    continue;
                   }
                 }
               }
@@ -705,6 +716,7 @@ export async function diffResult(
           return { result: newResult, elements: doms };
         }).then((data) => {
           runnningDiffTasks.delete(id);
+          mainTask.stop();
           if (data) {
             resolve(data);
           } else {

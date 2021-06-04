@@ -44,6 +44,7 @@ export interface ILazyTaskHandlerOption<T = any> {
   stop: () => void;
   id: number;
 }
+
 export interface ILazyTaskOption {
   autoRun?: boolean; // 是否自动的执行
   maxRunTime?: number; // 最多执行的次数
@@ -61,9 +62,17 @@ export class LazyTask<T = any> {
   private time = 0;
 
   public id = id++;
+
+  parent?: LazyTask;
+
+  path!: string;
+
+  private level?: number;
+
+  root!: LazyTask;
   private changeReasons: TaskChangeReason[] = [];
 
-  private canRecordRely = true;
+  canRecordRely = true;
   // 停止记录依赖
   private stopRecordRely() {
     this.canRecordRely = false;
@@ -79,12 +88,17 @@ export class LazyTask<T = any> {
     ) => void | undefined | ((isStop: boolean) => void),
     private option: ILazyTaskOption = {}
   ) {
+    const parent = getRunningTask();
+    this.parent = parent;
+    this.root = parent ? parent.root! : this;
+    this.level = parent ? parent.level! + 1 : 1;
+    this.path = parent ? `${parent.path}-${this.id}` : `${this.id}`;
     if (this.option.autoRun || this.option.autoRun === undefined) {
       this.run();
     }
   }
   canRecord(t: any, k: string | number, v: any) {
-    if (!this.canRecord) return false;
+    if (!this.canRecordRely) return false;
     if (!this.option.notRecord || typeof this.option.notRecord !== "function")
       return true;
     return !this.option.notRecord(t, k, v);
@@ -144,11 +158,11 @@ export class LazyTask<T = any> {
     // 清理子任务
     // 清理子任务
     if (this.stopped) return;
+    removeRely(this);
+    this.subTasks.forEach((t) => t.stop());
     this.stopped = true;
     this.unsub?.(true);
     this.unsub = undefined;
-    removeRely(this);
-    this.subTasks.forEach((t) => t.stop());
     this.subTasks.clear();
     this.data = undefined;
     this.changeReasons = [];
@@ -172,6 +186,10 @@ export class LazyTask<T = any> {
   @autobind
   addSubTask(task: LazyTask) {
     this.subTasks.add(task);
+    if (task.parent !== this) {
+      task.parent = this;
+      task.path = `${this.path}-${task.id}`;
+    }
   }
   @autobind
   removeSubTask(task: LazyTask, stop = true) {
@@ -234,14 +252,13 @@ onLazyable("get", (t, k, v) => {
   }
 });
 
-let tasksToRun: LazyTask[] = [];
+let tasksToRun = new Set<LazyTask>();
 let isInLifeCycle = false;
-let maxChunkSize = 5; // 最多可以一起执行的任务shu
+let maxChunkSize = 10; // 最多可以一起执行的任务shu
 const lifeCycleGap = 10;
 function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
   task.addReason(reasons);
-  removeRely(task);
-  tasksToRun.push(task);
+  tasksToRun.add(task);
   // 已经在运行中 可以开启新的setTimeout计时了
   if (!isInLifeCycle) {
     isInLifeCycle = true;
@@ -249,11 +266,12 @@ function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
       // 应该将这个lefeCycle立马重置false 因为运行可能会很慢 这个过程会有新的task加入
       // 如果到最后设置false 那结果就是新来的task一直在taskToRun数组中而得不到运行
       isInLifeCycle = false;
-      const tasks = tasksToRun;
-      tasksToRun = [];
+      const tasks = Array.from(tasksToRun);
+      // ignoreChildrenTasks(Array.from(tasksToRun));
+      tasksToRun.clear();
       for (let i = 0; i < tasks.length; i += maxChunkSize) {
         const cmax = i + maxChunkSize;
-        const max = cmax >= tasks.length ? tasks.length - 1 : cmax;
+        const max = cmax > tasks.length ? tasks.length : cmax;
         for (let j = i; j < max; j++) {
           tasks[j].restart();
         }
