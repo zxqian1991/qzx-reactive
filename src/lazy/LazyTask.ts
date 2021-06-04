@@ -231,21 +231,24 @@ onLazyable("get", (t, k, v) => {
 
 let tasksToRun: LazyTask[] = [];
 let isInLifeCycle = false;
-const lifeCycleGap = 10;
+const lifeCycleGap = 0;
 function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
   task.addReason(reasons);
   removeRely(task);
   tasksToRun.push(task);
+  // 已经在运行中 可以开启新的setTimeout计时了
   if (!isInLifeCycle) {
     isInLifeCycle = true;
     setTimeout(async () => {
+      // 应该将这个lefeCycle立马重置false 因为运行可能会很慢 这个过程会有新的task加入
+      // 如果到最后设置false 那结果就是新来的task一直在taskToRun数组中而得不到运行
+      isInLifeCycle = false;
       const tasks = tasksToRun;
       tasksToRun = [];
       for (let i = 0; i < tasks.length; i++) {
         tasks[i].restart();
         await lazyDocument.canRunning();
       }
-      isInLifeCycle = false;
     }, lifeCycleGap);
   }
 }
