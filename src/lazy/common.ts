@@ -24,6 +24,7 @@ export interface IDocument {
   createElement: (tag: string) => IDomElement;
   querySelector: (ele: string) => IDomElement | null;
   querySelectorAll: (ele: string) => IDomElement[] | null;
+  canRunning(): Promise<boolean>;
 }
 
 export interface IDomElement {
@@ -32,6 +33,7 @@ export interface IDomElement {
   preSibling: IDomElement | null;
   parent: IDomElement | null;
   getText: () => string;
+  setText: (str: string) => void;
   insertBefore: (doms: IDomElement[], target: IDomElement | null) => void; // 在子元素dom前插入新的元素
   setAttribute: (attr: string, value: any) => void;
   removeAttribute: (attr: string, value?: any) => void;

@@ -81,37 +81,34 @@ export default class VirtualElement {
             unmount.push(r);
           }
         });
-        const renderTask = new LazyTask(
-          (o2) => {
-            const result = this.instance?.render();
-            // 第一次运行 直接赋值
-            if (o2.runTime === 1) {
-              // 对结果做渲染
-              const fr = runExcludeTask(() => {
-                const fr = formatResult(result);
-                o1.setData(renderResult(fr));
-                return fr;
-              });
-              // 渲染完成后调用mounted函数
-              const r = this.instance?.onMounted();
-              if (r && typeof r === "function") {
-                unmount.push(r);
-              }
-              this.result = fr;
-            } else {
-              // 非第一次，要比较 并返回最新结果
-              const { result: Res, elements } = diffResult(
-                formatResult(result),
-                this.result!
-              );
-              this.result = Res;
-              if (elements && elements.length > 0) {
-                o1.setData(elements);
-              }
+        const renderTask = new LazyTask((o2) => {
+          const result = this.instance?.render();
+          // 第一次运行 直接赋值
+          if (o2.runTime === 1) {
+            // 对结果做渲染
+            const fr = runExcludeTask(() => {
+              const fr = formatResult(result);
+              o1.setData(renderResult(fr));
+              return fr;
+            });
+            // 渲染完成后调用mounted函数
+            const r = this.instance?.onMounted();
+            if (r && typeof r === "function") {
+              unmount.push(r);
             }
-          },
-          { debounce: 0 }
-        );
+            this.result = fr;
+          } else {
+            // 非第一次，要比较 并返回最新结果
+            const { result: Res, elements } = diffResult(
+              formatResult(result),
+              this.result!
+            );
+            this.result = Res;
+            if (elements && elements.length > 0) {
+              o1.setData(elements);
+            }
+          }
+        });
         return () => {
           // 停止属性的监听
           this.Prop?.stop();
@@ -121,7 +118,7 @@ export default class VirtualElement {
           this.instance?.onUnMounted();
         };
       },
-      { maxRunTime: 1, debounce: 0 }
+      { maxRunTime: 1 }
     );
     return this.mainTask.getData() || [];
   }
@@ -132,45 +129,42 @@ export default class VirtualElement {
         // 设置当前函数组件的一个唯一ID
         const ThisFunctionalIndex = ++FunctionalComponentIndex;
         const prop = this.Prop?.getProp();
-        const renderTask = new LazyTask(
-          (o2) => {
-            // 执行函数 支持hooks基础功能
-            const result = execFunctionalComponent(ThisFunctionalIndex, () =>
-              (this.component as FunctionalComponent<PropType>)(prop)
-            );
-            if (o2.runTime === 1) {
-              // 渲染结果
-              const fr = runExcludeTask(() => {
-                const fr = formatResult(result);
-                o1.setData(renderResult(fr));
-                return fr;
-              });
-              this.result = fr;
-              // 获取数据
-              const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
-              // 调用初始化数据
-              if (data) {
-                data.mounted.forEach((u) => u());
-              }
-            } else {
-              const { result: Res, elements } = diffResult(
-                formatResult(result),
-                this.result!
-              );
-              this.result = Res;
-              if (elements && elements.length > 0) {
-                o1.setData(elements);
-              }
+        const renderTask = new LazyTask((o2) => {
+          // 执行函数 支持hooks基础功能
+          const result = execFunctionalComponent(ThisFunctionalIndex, () =>
+            (this.component as FunctionalComponent<PropType>)(prop)
+          );
+          if (o2.runTime === 1) {
+            // 渲染结果
+            const fr = runExcludeTask(() => {
+              const fr = formatResult(result);
+              o1.setData(renderResult(fr));
+              return fr;
+            });
+            this.result = fr;
+            // 获取数据
+            const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
+            // 调用初始化数据
+            if (data) {
+              data.mounted.forEach((u) => u());
             }
-            return () => {
-              const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
-              data?.unmount.forEach((u) => u());
-              data?.onUnmount?.();
-              FunctionalComponentStoreMap.delete(ThisFunctionalIndex);
-            };
-          },
-          { debounce: 0 }
-        );
+          } else {
+            const { result: Res, elements } = diffResult(
+              formatResult(result),
+              this.result!
+            );
+            this.result = Res;
+            if (elements && elements.length > 0) {
+              o1.setData(elements);
+            }
+          }
+          return () => {
+            const data = FunctionalComponentStoreMap.get(ThisFunctionalIndex);
+            data?.unmount.forEach((u) => u());
+            data?.onUnmount?.();
+            FunctionalComponentStoreMap.delete(ThisFunctionalIndex);
+          };
+        });
         return () => {
           this.Prop?.stop();
           renderTask.stop();
@@ -178,7 +172,6 @@ export default class VirtualElement {
       },
       {
         maxRunTime: 1,
-        debounce: 0,
       }
     );
     return this.mainTask.getData() || [];
@@ -190,51 +183,47 @@ export default class VirtualElement {
         this.Prop = new LazyProp(this);
         const prop = this.Prop.getProp();
         o1.addSubTask(
-          new LazyTask(
-            (o2) => {
-              if (typeof this.id === "string") {
-                const children = prop.children || [];
-                if (children.length <= 0)
-                  throw new Error("formatted fragment can not be Empty");
-                const h = children[0] as FunctionalValue;
-                const res = h();
-                const fr = runExcludeTask(() => {
-                  return formatResult(res);
+          new LazyTask((o2) => {
+            if (typeof this.id === "string") {
+              const children = prop.children || [];
+              if (children.length <= 0)
+                throw new Error("formatted fragment can not be Empty");
+              const h = children[0] as FunctionalValue;
+              const res = h();
+              const fr = runExcludeTask(() => {
+                return formatResult(res);
+              });
+              if (o2.runTime === 1) {
+                runExcludeTask(() => {
+                  o1.setData(renderResult(fr));
                 });
-                if (o2.runTime === 1) {
-                  runExcludeTask(() => {
-                    o1.setData(renderResult(fr));
-                  });
-                  this.result = fr;
-                } else {
-                  const { result: Res, elements } = diffResult(
-                    fr,
-                    this.result!
-                  );
-                  this.result = Res;
-                  if (elements && elements.length > 0) {
-                    o1.setData(elements);
-                  }
-                }
+                this.result = fr;
               } else {
-                if (o2.runTime === 1) {
-                  const children = prop.children as VirtualElement[];
-                  o1.setData(flattern(children.map((i) => renderResult(i))));
-                  this.result = children;
-                } else {
-                  const { result } = diffResult(
-                    prop.children as VirtualElement[],
-                    this.result!
-                  );
-                  this.result = result;
+                const { result: Res, elements } = diffResult(fr, this.result!);
+                this.result = Res;
+                if (elements && elements.length > 0) {
+                  o1.setData(elements);
                 }
               }
-            },
-            { debounce: 0 } // DEBOUNCE必不可少 否则数组变化时可能出现问题
-          )
+            } else {
+              if (o2.runTime === 1) {
+                const children = prop.children as VirtualElement[];
+                o1.setData(flattern(children.map((i) => renderResult(i))));
+                this.result = children;
+              } else {
+                const { result } = diffResult(
+                  prop.children as VirtualElement[],
+                  this.result!
+                );
+                this.result = result;
+              }
+            }
+          })
         );
       },
-      { maxRunTime: 1, debounce: 0 }
+      {
+        maxRunTime: 1,
+      }
     );
     return this.mainTask.getData() || [];
   }
@@ -250,38 +239,35 @@ export default class VirtualElement {
         const handle = (p: string, cb: (t: LazyTask) => void) => {
           if (p === "children") {
             // children的需要特殊处理
-            return new LazyTask<VirtualElement[]>(
-              (o3) => {
-                if (rawProp.hasOwnProperty(p)) {
-                  if (o3.runTime === 1) {
-                    // 第一次运行 执行结果
-                    const elemets = flattern(
-                      prop.children?.map((i) =>
-                        renderResult(i as VirtualElement)
-                      )!,
-                      1
-                    );
-                    this.result = Raw(prop.children as VirtualElement[]);
-                    // 将结果添加到dom中
-                    this.native?.append(elemets);
-                    // 存储下旧的值
-                  } else {
-                    const { result } = diffResult(
-                      prop.children! as VirtualElement[],
-                      this.result!
-                    );
-                    this.result = Raw(result);
-                    // o3.setData(diffResult(prop.children, o3.getData()).result);
-                  }
+            return new LazyTask<VirtualElement[]>((o3) => {
+              if (rawProp.hasOwnProperty(p)) {
+                if (o3.runTime === 1) {
+                  // 第一次运行 执行结果
+                  const elemets = flattern(
+                    prop.children?.map((i) =>
+                      renderResult(i as VirtualElement)
+                    )!,
+                    1
+                  );
+                  this.result = Raw(prop.children as VirtualElement[]);
+                  // 将结果添加到dom中
+                  this.native?.append(elemets);
+                  // 存储下旧的值
                 } else {
-                  // children没了  要卸载掉
-                  unmountResult(this.result || []);
-                  this.result = undefined;
-                  cb(o3.getTask());
+                  const { result } = diffResult(
+                    prop.children! as VirtualElement[],
+                    this.result!
+                  );
+                  this.result = Raw(result);
+                  // o3.setData(diffResult(prop.children, o3.getData()).result);
                 }
-              },
-              { debounce: 0 }
-            );
+              } else {
+                // children没了  要卸载掉
+                unmountResult(this.result || []);
+                this.result = undefined;
+                cb(o3.getTask());
+              }
+            });
           } else {
             // 正常的属性
             return new LazyTask((o3) => {
@@ -326,7 +312,6 @@ export default class VirtualElement {
       },
       {
         maxRunTime: 1,
-        debounce: 0,
       }
     );
     return this.mainTask.getData() || [];
@@ -552,7 +537,6 @@ export function diffResult(
   oldResult: FormattedElementResultType
 ): { result: FormattedElementResultType; elements?: IDomElement[] } {
   // 都是虚拟DOM 看类型是否一样
-  console.log("diff");
   if (
     newResult instanceof VirtualElement &&
     oldResult instanceof VirtualElement &&
@@ -665,10 +649,13 @@ export function diffResult(
      */
   } else if (
     lazyDocument.isTextElement(newResult) &&
-    lazyDocument.isTextElement(oldResult) &&
-    (newResult as IDomElement).getText() ===
-      (oldResult as IDomElement).getText()
+    lazyDocument.isTextElement(oldResult)
   ) {
+    const newText = (newResult as IDomElement).getText();
+    const oldText = (oldResult as IDomElement).getText();
+    if (newText !== oldText) {
+      (oldResult as ITextElement).setText(newText);
+    }
     return { result: oldResult };
   }
   const position = unmountResult(oldResult);

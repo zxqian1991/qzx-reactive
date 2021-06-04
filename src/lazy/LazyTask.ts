@@ -1,3 +1,4 @@
+import { lazyDocument } from "./Document";
 import {
   onLazyable,
   LazyableOptType,
@@ -43,7 +44,6 @@ export interface ILazyTaskHandlerOption<T = any> {
   stop: () => void;
 }
 export interface ILazyTaskOption {
-  debounce?: number | boolean | undefined; // 任务执行机制
   autoRun?: boolean; // 是否自动的执行
   maxRunTime?: number; // 最多执行的次数
   autoUnsub?: boolean;
@@ -56,7 +56,6 @@ export class LazyTask<T = any> {
 
   private data?: T;
 
-  private debounce: undefined | Debounce;
   private time = 0;
   private changeReasons: TaskChangeReason[] = [];
 
@@ -79,13 +78,6 @@ export class LazyTask<T = any> {
     if (this.option.autoRun || this.option.autoRun === undefined) {
       this.run();
     }
-    this.debounce =
-      (typeof this.option.debounce === "number" && this.option.debounce >= 0) ||
-      this.option.debounce === true
-        ? new Debounce(
-            this.option.debounce === true ? 0 : this.option.debounce || 0
-          )
-        : undefined;
   }
   canRecord(t: any, k: string | number, v: any) {
     if (!this.canRecord) return false;
@@ -161,19 +153,15 @@ export class LazyTask<T = any> {
     return this.stopped;
   }
 
-  restart(reasons?: TaskChangeReason[], force = false) {
+  addReason(reasons?: TaskChangeReason[]) {
+    reasons?.forEach((r) => this.changeReasons.push(r));
+  }
+
+  restart(force = false) {
     if (!force && this.stopped) return;
-    if (!this.debounce) {
-      this.run(reasons);
-    } else {
-      // 叠加理由
-      reasons?.forEach((r) => this.changeReasons.push(r));
-      this.debounce.execute(() => {
-        if (this.stopped) return;
-        this.run(this.changeReasons);
-        this.changeReasons = []; // 重置理由
-      });
-    }
+    if (this.stopped) return;
+    this.run(this.changeReasons);
+    this.changeReasons = [];
   }
 
   @autobind
@@ -240,11 +228,33 @@ onLazyable("get", (t, k, v) => {
     addRely(TMEP_RUNNING_TASK, t, k as string);
   }
 });
+
+let tasksToRun: LazyTask[] = [];
+let isInLifeCycle = false;
+const lifeCycleGap = 10;
+function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
+  task.addReason(reasons);
+  removeRely(task);
+  tasksToRun.push(task);
+  if (!isInLifeCycle) {
+    isInLifeCycle = true;
+    setTimeout(async () => {
+      const tasks = tasksToRun;
+      tasksToRun = [];
+      for (let i = 0; i < tasks.length; i++) {
+        tasks[i].restart();
+        await lazyDocument.canRunning();
+      }
+      isInLifeCycle = false;
+    }, lifeCycleGap);
+  }
+}
+
 onLazyable("set", (t, k, v, ov, isAdd) => {
   TARGET_TASK_RELY.get(t)
     ?.get(k as string)
-    ?.forEach((task) => {
-      task.restart([
+    ?.forEach((task) =>
+      addLifeTask(task, [
         {
           target: t,
           key: k,
@@ -252,14 +262,14 @@ onLazyable("set", (t, k, v, ov, isAdd) => {
           value: v,
           oldValue: ov,
         },
-      ]);
-    });
+      ])
+    );
 });
 onLazyable("delete", (t, k, ov) => {
   TARGET_TASK_RELY.get(t)
     ?.get(k as string)
-    ?.forEach((task) => {
-      task.restart([
+    ?.forEach((task) =>
+      addLifeTask(task, [
         {
           target: t,
           key: k,
@@ -267,6 +277,6 @@ onLazyable("delete", (t, k, ov) => {
           value: undefined,
           oldValue: ov,
         },
-      ]);
-    });
+      ])
+    );
 });

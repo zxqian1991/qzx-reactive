@@ -11,6 +11,11 @@ class MyBaseElement implements IDomElement {
       ? (this.dom as Text).textContent
       : (this.dom as any)?.innerText;
   }
+  setText(text: string) {
+    if (this.isText()) {
+      (this.dom as Text).textContent = text;
+    }
+  }
   constructor(private dom: Text | HTMLElement) {}
   append(eles: IDomElement[]) {
     eles.forEach((ele) => {
@@ -127,6 +132,13 @@ const HTMLDOMDrive: IDocument = {
     const rs = document.querySelectorAll(v);
     if (rs) return Array.from(rs).map((r) => new MyBaseElement(r as any));
     return null;
+  },
+  async canRunning() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        resolve(true);
+      });
+    });
   },
 };
 

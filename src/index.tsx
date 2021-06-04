@@ -3,19 +3,30 @@ import Lazyman, { lazyDocument } from "./lazy/index";
 import { Lazyable, State, Stateable } from "./lazy/Lazyable";
 import HTMLDOMDrive from "./lazy/LazyDom";
 import { generateArray } from "./lazy/utils/Array";
-import { Component } from "./lazy/Component";
-import { PropType } from "./lazy/common";
-import { useCreated, useMounted, useUnMounted } from "./lazy/VirtualElement";
 
 const data = Lazyable({
-  arr: generateArray(1000, (i) => i),
-} as { count: number; arr: number[]; ref: any });
+  count: 0,
+  arr: generateArray(5, (i) => ({ value: i })),
+} as { count: number; arr: { value: number }[]; ref: any; size: number });
 Lazyman.drive(HTMLDOMDrive);
 Lazyman.render(
   <div>
+    <div>
+      <button onClick={() => data.count++}>count + 1</button>
+      <button onClick={() => data.arr.push({ value: data.arr.length })}>
+        新增
+      </button>
+      <button
+        onClick={() => {
+          data.arr.pop();
+        }}
+      >
+        减少
+      </button>
+    </div>
     {data.arr.map((i, index) => (
-      <div key={index} onClick={() => data.arr[index]++}>
-        {i}
+      <div key={index} onClick={() => data.count++}>
+        {i.value + data.count + data.arr.length}
       </div>
     ))}
   </div>,

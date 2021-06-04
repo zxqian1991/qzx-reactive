@@ -38,6 +38,9 @@ export class LazyDocument implements IDocument {
     oldElements.forEach((ele) => ele.remove());
     this.insertElements(newElements, position);
   }
+  async canRunning() {
+    return true;
+  }
 }
 
 const lazyDocument = new LazyDocument();

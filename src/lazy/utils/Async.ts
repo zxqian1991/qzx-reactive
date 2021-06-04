@@ -101,3 +101,53 @@ export class Throttle {
 export function waitTime(time: number = 0) {
   return new Promise((resolve) => setTimeout(() => resolve(true), time));
 }
+
+// interface ISyncTask {
+//   handler: () => void;
+//   next?: ISyncTask;
+// }
+// export class SyncTask {
+//   get gap() {
+//     return this.option.gap || 0;
+//   }
+
+//   private running = false;
+
+//   private last?: ISyncTask;
+
+//   private next?: ISyncTask;
+
+//   constructor(
+//     private option: {
+//       gap?: number;
+//     } = {}
+//   ) {}
+//   private async run() {
+//     if (this.next) {
+//       this.next.handler();
+//       await waitTime(this.gap);
+//       this.next = this.next.next;
+//       await this.run();
+//     }
+//   }
+
+//   async exec(h: () => void) {
+//     if (!this.running) {
+//       this.running = true;
+//       this.next = {
+//         handler: h,
+//       };
+//       this.last = this.next;
+//       await this.run();
+//       this.running = false;
+//       this.next = undefined;
+//       this.last = undefined;
+//     } else {
+//       const next = {
+//         handler: h,
+//       };
+//       this.last!.next = next;
+//       this.last = next;
+//     }
+//   }
+// }

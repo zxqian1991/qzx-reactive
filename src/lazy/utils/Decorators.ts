@@ -45,14 +45,14 @@ export function throttle(timeout = 300) {
   return (target: object, property: string, descriptor: PropertyDescriptor) => {
     const value = descriptor.value;
     const map = new Map<any, Throttle>();
-    descriptor.value = function () {
+    descriptor.value = function (...args: any[]) {
       if (map.has(this)) {
         return map.get(this)?.wait();
       }
       const throttle = new Throttle(timeout);
       map.set(this, throttle);
       throttle.wait().then(() => map.delete(this));
-      return throttle.execute(() => value.apply(this, arguments));
+      return throttle.execute(() => value.apply(this, args));
     };
   };
 }
@@ -61,14 +61,14 @@ export function debounce(timeout = 300) {
   return (target: object, property: string, descriptor: PropertyDescriptor) => {
     const value = descriptor.value;
     const map = new Map<any, Debounce>();
-    descriptor.value = function () {
+    descriptor.value = function (...args: any[]) {
       if (map.has(this)) {
         return map.get(this)?.wait();
       }
       const debounce = new Debounce(timeout);
       map.set(this, debounce);
       debounce.wait().then(() => map.delete(this));
-      return debounce.execute(() => value.apply(this, arguments));
+      return debounce.execute(() => value.apply(this, args));
     };
   };
 }
