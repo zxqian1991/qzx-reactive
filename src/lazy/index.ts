@@ -1,25 +1,22 @@
 import {
-  ComponentType,
-  ElementResultType,
-  renderResult,
-} from "./VirtualElement";
-import {
   FunctionalProp,
   FunctionalValue,
   IDocument,
   IDomElement,
-} from "./common";
-import VirtualElement from "./VirtualElement";
-import { formatResult } from "./VirtualElement";
+} from "./types";
 import { lazyDocument } from "./Document";
 import HTMLDOMDrive from "./LazyDom";
+import VirtualElement, {
+  ComponentType,
+  ElementResultType,
+} from "./VirtualElements";
+import { formatResult, renderResult } from "./VirtualElements/common";
 export * from "./utils";
 export * from "./Document";
-export * from "./common";
+export * from "./types";
 export * from "./Component";
 export * from "./Lazyable";
 export * from "./LazyTask";
-export * from "./VirtualElement";
 
 const Lazyman = {
   createElement(

@@ -1,13 +1,6 @@
 import { lazyDocument } from "./Document";
-import {
-  onLazyable,
-  LazyableOptType,
-  Lazyable,
-  Raw,
-  transformLazyable,
-} from "./Lazyable";
-import { autobind, Debounce } from "./utils";
-import { isFormattedArray } from "./VirtualElement";
+import { onLazyable, LazyableOptType } from "./Lazyable";
+import { autobind } from "./utils";
 /**
  * @author [qianzhixiang]
  * @email [zxqian199@163.com]
@@ -252,9 +245,46 @@ onLazyable("get", (t, k, v) => {
   }
 });
 
+/**
+ * 判断target是不是node的父亲节点
+ * @param node 判断的节点
+ * @param target 被比较的节点
+ * @returns
+ */
+function isParentNode(node: string, target: string, sep = "-") {
+  return (
+    node.length > target.length &&
+    node.indexOf(target) === 0 &&
+    node[target.length] === sep
+  );
+}
+function filterTreeTask(tasks: LazyTask[]) {
+  if (tasks.length <= 0) return [];
+  let results = new Set([tasks[0]]);
+  for (let i = 1; i < tasks.length; i++) {
+    let tempResults = Array.from(results);
+    for (let j = 0; j < tempResults.length; j++) {
+      const task = tasks[i];
+      const result = tempResults[j];
+      // 是父节点 替换
+      if (isParentNode(result.path, task.path)) {
+        // 加入
+        results.add(task);
+        // 删除子节点
+        results.delete(result);
+      } else if (isParentNode(task.path, result.path)) {
+        // 已经有了父节点
+        continue;
+      } else {
+        results.add(task);
+      }
+    }
+  }
+  return Array.from(results);
+}
+
 let tasksToRun = new Set<LazyTask>();
 let isInLifeCycle = false;
-let maxChunkSize = 10; // 最多可以一起执行的任务shu
 const lifeCycleGap = 10;
 function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
   task.addReason(reasons);
@@ -263,18 +293,12 @@ function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
   if (!isInLifeCycle) {
     isInLifeCycle = true;
     setTimeout(async () => {
-      // 应该将这个lefeCycle立马重置false 因为运行可能会很慢 这个过程会有新的task加入
-      // 如果到最后设置false 那结果就是新来的task一直在taskToRun数组中而得不到运行
       isInLifeCycle = false;
-      const tasks = Array.from(tasksToRun);
-      // ignoreChildrenTasks(Array.from(tasksToRun));
+      const rawTasks = Array.from(tasksToRun);
+      const tasks = filterTreeTask(rawTasks);
       tasksToRun.clear();
-      for (let i = 0; i < tasks.length; i += maxChunkSize) {
-        const cmax = i + maxChunkSize;
-        const max = cmax > tasks.length ? tasks.length : cmax;
-        for (let j = i; j < max; j++) {
-          tasks[j].restart();
-        }
+      for (let i = 0; i < tasks.length; i++) {
+        tasks[i].restart();
         await lazyDocument.canRunning();
       }
     }, lifeCycleGap);

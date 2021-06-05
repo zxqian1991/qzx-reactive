@@ -1,4 +1,5 @@
-import VirtualElement from "./VirtualElement";
+import VirtualElement from "./VirtualElements";
+
 export type FunctionalValue = () => any;
 
 export interface ChildrenType {
@@ -50,3 +51,6 @@ export interface IDirectiveOption<T> {
 }
 
 export interface IDirectives {}
+
+export type VoidFunction = () => void;
+export type VoidOrVoidFunction = void | VoidFunction;

@@ -1,7 +1,7 @@
-import { PropType, FunctionalValue, FunctionalProp } from "./common";
+import { PropType, FunctionalValue, FunctionalProp } from "./types";
 import { Lazyable, Raw, onLazyable } from "./Lazyable";
-import { LazyTask, getRunningTask } from "./LazyTask";
-import VirtualElement from "./VirtualElement";
+import { LazyTask } from "./LazyTask";
+import VirtualElement from "./VirtualElements";
 
 /**
  * @author [qianzhixiang]

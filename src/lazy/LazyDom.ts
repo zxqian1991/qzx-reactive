@@ -1,4 +1,4 @@
-import { IDocument, IDomElement } from "./common";
+import { IDocument, IDomElement } from "./types";
 import { joinObject } from "./utils/Object";
 import { getRunningTask, LazyTask } from "./LazyTask";
 

@@ -56,10 +56,10 @@ Lazyman.render(
 ### 使用函数
 
 ```jsx
-import Lazyman, {HTMLDOMDrive, lazyDocument, useLazyable} from 'lazyx';
+import Lazyman, {HTMLDOMDrive, lazyDocument, useState} from 'lazyx';
 
 function Test() {
-  const data= useLazyable({count: 1});
+  const data= useState({count: 1});
   return <div onClick={() => data.count++}>{data.count}</div>;
 }
 Lazyman.drive(HTMLDOMDrive);
@@ -164,7 +164,7 @@ const a = new A();
 
 ```jsx
 export function Test() {
-  const data = useLazyable({color: 'red'})
+  const data = useState({color: 'red'})
   return <div>
     	<div style={{color: data.color}} onClick={() => this.color = this.color === 'red' ? 'blue' : 'red'}>
         我是测试我骄傲
@@ -198,7 +198,7 @@ export function Test() {
 
 ```jsx
 function A() {
-  const data = useLazyable({ref: undefined});
+  const data = useState({ref: undefined});
   useMounted(() => {
     console.log(data.ref);
   })
@@ -270,7 +270,7 @@ export function Test() {
 
 ```jsx
 export function() {
-	const data = useLazyable({count: 0})
+	const data = useState({count: 0})
   return <div onClick={() => data.count++}>{data.count}</div>
 }
 ```

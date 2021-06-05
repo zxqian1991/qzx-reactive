@@ -7,7 +7,7 @@
     "module": "esnext",
     "moduleResolution": "node",
     "noEmitHelpers": true,
-    "noImplicitThis": false,
+    "noImplicitThis": true,
     "noUnusedLocals": false,
     "removeComments": true,
     "sourceMap": false,

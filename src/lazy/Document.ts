@@ -1,4 +1,4 @@
-import { IDocument, IDomElement, IDomPosition } from "./common";
+import { IDocument, IDomElement, IDomPosition } from "./types";
 export class LazyDocument implements IDocument {
   isTextElement(d: any) {
     return undefined as any;
