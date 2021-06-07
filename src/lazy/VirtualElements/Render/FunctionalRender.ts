@@ -1,33 +1,32 @@
 import VirtualElement, { ElementResultType } from "..";
-import {
-  LazyTask,
-  IDomElement,
-  PropType,
-  runExcludeTask,
-  Lazyable,
-} from "../..";
+import { LazyTask, IDomElement, PropType, runExcludeTask } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { formatResult, renderResult } from "../common";
 import { VoidOrVoidFunction } from "../../types";
+import { Lazyable, Raw } from "../../Lazyable";
+import { useService } from "../../LazyService";
 
 export type FunctionalComponentInited = {
   onCreated?: (() => VoidOrVoidFunction) | (() => VoidOrVoidFunction)[];
   onMounted?: (() => VoidOrVoidFunction) | (() => VoidOrVoidFunction)[];
-  unMounted?: VoidFunction | VoidFunction[];
+  onUnMounted?: VoidFunction | VoidFunction[];
 };
 
 export type FunctionalOperate = {
   nextTick: (h: () => void) => void;
 };
 
-export type FunctionComponentStore<S extends Object = {}> = {
+export type FunctionComponentStore<T = any, C = any, S = any, M = any> = {
   inited: boolean; // 是否已经初始化
   unmount: (() => void)[]; // 卸载的时候的回调
   mounted: (() => void)[]; // 组件已装载
   nextticks: (() => void)[];
-  state?: S;
-  operate?: FunctionalOperate;
+  context: M & {
+    state: T;
+    computed: ComputedType<C>;
+    services: ServiceType<S>;
+  };
 };
 
 export type FunctionalComponent<P extends PropType, S = any> = (
@@ -47,7 +46,6 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
       // 设置当前函数组件的一个唯一ID
       const virtualElementFunctionalIndex = ++FunctionalComponentIndex;
       const prop = virtualElement.Prop?.getProp();
-      const effectsValue: any[][] = [];
       o1.addSubTask(
         new LazyTask((o2) => {
           // 执行函数 支持hooks基础功能
@@ -56,8 +54,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
             (data) =>
               (virtualElement.component as FunctionalComponent<PropType>)(
                 prop,
-                o2.runTime === 1 ? undefined : data.state,
-                o2.runTime === 1 ? undefined : data.operate
+                o2.runTime === 1 ? undefined : data.context
               )
           );
           if (o2.runTime === 1) {
@@ -128,15 +125,11 @@ function execFunctionalComponent<P extends PropType>(
       unmount: [],
       mounted: [],
       nextticks: [],
+      context: {},
     });
   }
   // 执行
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
-  data.operate = {
-    nextTick: (h: () => void) => {
-      data.nextticks.push(h);
-    },
-  };
   const result = func(data);
   if (!data.inited) {
     data.inited = true;
@@ -150,20 +143,8 @@ function assertInFunctionComponent() {
     throw new Error("useState only support functional component!");
 }
 
-// 使用响应值
-export function useState<T extends Record<string, any>>(initialValue: T): T {
-  assertInFunctionComponent();
-  const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
-  if (data.inited) {
-    return data.state as T;
-  } else {
-    data.state = Lazyable(initialValue);
-    return data.state as T;
-  }
-}
-
 // 使用初始化钩子
-function useCreated(func: () => void | (() => void)) {
+export function useCreated(func: () => void | (() => void)) {
   assertInFunctionComponent();
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
   if (!data.inited) {
@@ -174,51 +155,8 @@ function useCreated(func: () => void | (() => void)) {
   }
 }
 
-// 传递给函数组件的第三个参数
-export function useLife(init?: FunctionalComponentInited) {
-  assertInFunctionComponent();
-  const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
-  if (!data.inited) {
-    if (init) {
-      if (init.onCreated) {
-        if (Array.isArray(init.onCreated)) {
-          useCreated(() => {
-            const rs = (init.onCreated as (() => VoidOrVoidFunction)[]).map(
-              (h) => h()
-            );
-            return () => rs.forEach((r) => r && r());
-          });
-        } else {
-          useCreated(init.onCreated);
-        }
-      }
-      if (init.onMounted) {
-        if (Array.isArray(init.onMounted)) {
-          useMounted(() => {
-            const rs = (init.onMounted as (() => VoidOrVoidFunction)[]).map(
-              (h) => h()
-            );
-            return () => rs.forEach((r) => r && r());
-          });
-        } else {
-          useMounted(init.onMounted);
-        }
-      }
-      if (init.unMounted) {
-        if (Array.isArray(init.unMounted)) {
-          useUnMounted(() =>
-            (init.unMounted as (() => VoidOrVoidFunction)[]).map((h) => h())
-          );
-        } else {
-          useUnMounted(init.unMounted);
-        }
-      }
-    }
-  }
-}
-
 // 下载时使用的函数
-function useUnMounted(func: () => void) {
+export function useUnMounted(func: () => void) {
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
   if (!data.inited) {
     // data.onUnmount = func;
@@ -226,7 +164,7 @@ function useUnMounted(func: () => void) {
   }
 }
 
-function useMounted(func: () => void | (() => void)) {
+export function useMounted(func: () => void | (() => void)) {
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
   if (!data.inited) {
     data.unmount.push(() => {});
@@ -238,4 +176,110 @@ function useMounted(func: () => void | (() => void)) {
       }
     });
   }
+}
+
+export type ComputedType<T> = T extends Record<string, any>
+  ? {
+      [p in keyof T]: ReturnType<T[p]>;
+    }
+  : T;
+export type ServiceType<T> = T extends Record<
+  string,
+  new (...args: any[]) => any
+>
+  ? {
+      [p in keyof T]: InstanceType<T[p]>;
+    }
+  : T;
+
+export type ComponentLifeCycle = {
+  onCreated?: () => VoidOrVoidFunction;
+  onMounted?: () => VoidOrVoidFunction;
+  onUnMounted?: VoidFunction;
+};
+
+type FunctionContextType<T, C, S, M> = M & {
+  state: T;
+  computed: ComputedType<C>;
+  services: ServiceType<S>;
+};
+
+export type FunctionalComponentConfig<T, C, S, M> = {
+  state?: T;
+  computed?: C & ThisType<FunctionContextType<T, C, S, M>>;
+  services?: S & ThisType<FunctionContextType<T, C, S, M>>;
+  lifeCycle?: ComponentLifeCycle & ThisType<FunctionContextType<T, C, S, M>>;
+  methods?: M & ThisType<FunctionContextType<T, C, S, M>>;
+};
+
+export function useCtx<
+  T extends Record<string, any>,
+  C extends Record<string, (...args: any[]) => any>,
+  S extends Record<string, new (...args: any[]) => any>,
+  M extends Record<string, (...args: any[]) => any>
+>(
+  option: FunctionalComponentConfig<T, C, S, M>
+): FunctionContextType<T, C, S, M> {
+  assertInFunctionComponent();
+  const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
+  if (!data.inited) {
+    const state = Lazyable(option.state || {});
+    const services: ServiceType<S> = {} as any;
+    const _computed = Lazyable({} as any);
+    const computed = new Proxy(_computed, {
+      get(t, k, r) {
+        // 已经有这个属性了 直接用
+        if (Raw(t).hasOwnProperty(k)) {
+          return Reflect.get(t, k, r);
+        } else {
+          const task = new LazyTask(() => {
+            _computed[k] = option?.computed?.[k as string]?.apply(ctx);
+          });
+          // 卸载的时候 解除监听
+          data.unmount.push(() => task.stop());
+          return Reflect.get(t, k, r);
+        }
+      },
+      set() {
+        throw new Error("computed value can't be set");
+      },
+    });
+    const ctx: any = {
+      state,
+      // 无法被复制
+      computed,
+      services,
+    };
+    if (option.lifeCycle) {
+      for (let life in option.lifeCycle) {
+        switch (life) {
+          case "onCreated":
+            useCreated(option.lifeCycle[life]!);
+            break;
+          case "onMounted":
+            useMounted(option.lifeCycle[life]!);
+            break;
+          case "onUnMounted":
+            useUnMounted(option.lifeCycle[life]!);
+            break;
+        }
+      }
+    }
+
+    if (option.services) {
+      const rawServices = Raw(option.services);
+      for (let i in rawServices) {
+        const service = rawServices[i];
+        const ins = useService(service);
+        services[i] = ins;
+      }
+    }
+
+    for (let i in option.methods) {
+      ctx[i] = option.methods[i].bind(ctx);
+    }
+
+    data.context = ctx;
+  }
+  return data.context;
 }

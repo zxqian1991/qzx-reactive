@@ -124,7 +124,7 @@ export class LazyProp {
     value();
     unsub();
     if (target !== undefined && key !== undefined) {
-      target[key] = this.virualElemet.native || this.virualElemet.instance;
+      target[key] = this.virualElemet.native;
     }
   }
 

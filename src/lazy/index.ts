@@ -10,11 +10,14 @@ import VirtualElement, {
   ComponentType,
   ElementResultType,
 } from "./VirtualElements";
-import { formatResult, renderResult } from "./VirtualElements/common";
+import {
+  formatResult,
+  renderResult,
+  unmountResult,
+} from "./VirtualElements/common";
 export * from "./utils";
 export * from "./Document";
 export * from "./types";
-export * from "./Component";
 export * from "./Lazyable";
 export * from "./LazyTask";
 
@@ -36,7 +39,13 @@ const Lazyman = {
   render(ele: ElementResultType, container: IDomElement) {
     if (!container) throw new Error("container is Emptry");
     const format = formatResult(ele);
-    container.append(renderResult(format));
+    const result = renderResult(format);
+    container.append(result);
+    return {
+      unmount() {
+        unmountResult(result);
+      },
+    };
   },
 };
 

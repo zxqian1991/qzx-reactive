@@ -335,3 +335,16 @@ onLazyable("delete", (t, k, ov) => {
       ])
     );
 });
+
+export function Computed<T>(h: () => T) {
+  const value: { value: undefined | T; stop: () => void } = {
+    value: undefined,
+    stop() {
+      return task.stop();
+    },
+  };
+  const task = new LazyTask((o) => {
+    value.value = h();
+  });
+  return value;
+}

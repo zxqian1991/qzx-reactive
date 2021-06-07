@@ -6,7 +6,15 @@ export interface ChildrenType {
   children?: (VirtualElement | FunctionalValue)[];
 }
 
-export interface PropType extends Record<string, any>, ChildrenType {}
+export interface KeyType {
+  key?: any;
+}
+
+export type PropType<T extends Record<string, any> = any> = T &
+  ChildrenType &
+  KeyType;
+
+// export interface PropType extends Record<string, any>, ChildrenType {}
 
 export type FunctionalPropType = "rest" | "normal";
 export type FunctionalProp = {
@@ -52,5 +60,4 @@ export interface IDirectiveOption<T> {
 
 export interface IDirectives {}
 
-export type VoidFunction = () => void;
 export type VoidOrVoidFunction = void | VoidFunction;
