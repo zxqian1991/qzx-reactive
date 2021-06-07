@@ -30,11 +30,7 @@ Lazyman.render(
       </button>
     </div>
     {data.arr.map((i, index) => (
-      <A
-        key={index}
-        onClick={() => i.value++}
-        value={i.value + data.arr.length + data.count}
-      />
+      <A key={index} value={i.value + data.arr.length + data.count} />
     ))}
   </div>,
   lazyDocument.querySelector("#root")!
@@ -42,7 +38,7 @@ Lazyman.render(
 
 // 使用useState的好处是不会重复的创建对象而不用 稍微快些
 function A(
-  p: PropType<{ onClick: any; value: number }>,
+  p: PropType<{ value: number }>,
   ctx = useCtx({
     state: {
       count: 1,
@@ -55,7 +51,6 @@ function A(
     },
     lifeCycle: {
       onCreated() {
-        console.log("i am created", p.value);
         return () => console.log("i am created Unmount");
       },
       onMounted() {

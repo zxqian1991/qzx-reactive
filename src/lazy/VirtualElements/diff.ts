@@ -14,9 +14,9 @@ import { getElements, renderResult, unmountResult } from "./common";
  * @param oldResult
  * @returns
  */
-const runnningDiffTasks = new Map<number, LazyTask>();
+const runnningDiffTasks = new Map<number | string, LazyTask>();
 export default async function diffResult(
-  id: number,
+  id: number | string,
   newResult: FormattedElementResultType,
   oldResult: FormattedElementResultType
 ): Promise<{ result: FormattedElementResultType; elements?: IDomElement[] }> {
@@ -142,7 +142,7 @@ export default async function diffResult(
               parent?.insertBefore(tempElements, nextElement);
               // 存储结果
               newReturnResult.push(r);
-              await lazyDocument.canRunning();
+              // await lazyDocument.canRunning();
               // 不能运行了 跳出逊汗
               if (!canRun) break;
             }

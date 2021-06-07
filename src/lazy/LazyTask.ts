@@ -42,6 +42,7 @@ export interface ILazyTaskOption {
   autoRun?: boolean; // 是否自动的执行
   maxRunTime?: number; // 最多执行的次数
   autoUnsub?: boolean;
+  autoAppendAsSubTask?: boolean;
   notRecord?: (t: any, k: string | number, v: any) => boolean; // 有可能有的值不需要被记录 这里需要记录
 }
 let id = 0;
@@ -58,7 +59,7 @@ export class LazyTask<T = any> {
 
   parent?: LazyTask;
 
-  path!: string;
+  path?: string;
 
   private level?: number;
 
@@ -82,10 +83,15 @@ export class LazyTask<T = any> {
     private option: ILazyTaskOption = {}
   ) {
     const parent = getRunningTask();
-    this.parent = parent!;
-    this.root = parent ? parent.root! : this;
-    this.level = parent ? parent.level! + 1 : 1;
-    this.path = parent ? `${parent.path}-${this.id}` : `${this.id}`;
+    if (
+      option.autoAppendAsSubTask ||
+      option.autoAppendAsSubTask === undefined
+    ) {
+      this.parent = parent!;
+      this.root = parent ? parent.root! : this;
+      this.level = parent ? parent.level! + 1 : 1;
+      this.path = parent ? `${parent.path}-${this.id}` : `${this.id}`;
+    }
     if (this.option.autoRun || this.option.autoRun === undefined) {
       this.run();
     }
@@ -258,30 +264,6 @@ function isParentNode(node: string, target: string, sep = "-") {
     node[target.length] === sep
   );
 }
-function filterTreeTask(tasks: LazyTask[]) {
-  if (tasks.length <= 0) return [];
-  let results = new Set([tasks[0]]);
-  for (let i = 1; i < tasks.length; i++) {
-    let tempResults = Array.from(results);
-    for (let j = 0; j < tempResults.length; j++) {
-      const task = tasks[i];
-      const result = tempResults[j];
-      // 是父节点 替换
-      if (isParentNode(result.path, task.path)) {
-        // 加入
-        results.add(task);
-        // 删除子节点
-        results.delete(result);
-      } else if (isParentNode(task.path, result.path)) {
-        // 已经有了父节点
-        continue;
-      } else {
-        results.add(task);
-      }
-    }
-  }
-  return Array.from(results);
-}
 
 let tasksToRun = new Set<LazyTask>();
 let isInLifeCycle = false;
@@ -295,11 +277,9 @@ function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
     setTimeout(async () => {
       isInLifeCycle = false;
       const rawTasks = Array.from(tasksToRun);
-      const tasks = filterTreeTask(rawTasks);
       tasksToRun.clear();
-      for (let i = 0; i < tasks.length; i++) {
-        tasks[i].restart();
-        await lazyDocument.canRunning();
+      for (let i = 0; i < rawTasks.length; i++) {
+        rawTasks[i].restart();
       }
     }, lifeCycleGap);
   }

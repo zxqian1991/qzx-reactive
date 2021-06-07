@@ -228,9 +228,14 @@ export function useCtx<
         if (Raw(t).hasOwnProperty(k)) {
           return Reflect.get(t, k, r);
         } else {
-          const task = new LazyTask(() => {
-            _computed[k] = option?.computed?.[k as string]?.apply(ctx);
-          });
+          const task = new LazyTask(
+            () => {
+              _computed[k] = option?.computed?.[k as string]?.apply(ctx);
+            },
+            {
+              autoAppendAsSubTask: false,
+            }
+          );
           // 卸载的时候 解除监听
           data.unmount.push(() => task.stop());
           return Reflect.get(t, k, r);
