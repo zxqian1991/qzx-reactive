@@ -22,7 +22,7 @@ export function autobind(
     get() {
       return value.bind(this);
     },
-  };
+  } as any;
 }
 
 export function pendding() {
@@ -98,7 +98,7 @@ export function lazy<K, T = any>(
   return (target: Object, property: string, descriptor: PropertyDescriptor) => {
     const value = descriptor.value;
     const cacheMap = new Map<any, CacheArgs>();
-    descriptor.value = function (...args: any[]) {
+    descriptor.value = function (this: K, ...args: any[]) {
       if (!cacheMap.has(this)) {
         cacheMap.set(this, new CacheArgs(timeout, level));
       }

@@ -28,7 +28,9 @@ export default function NativeRender(virtualElement: VirtualElement) {
               if (o3.runTime === 1) {
                 // 第一次运行 执行结果
                 const elemets = flattern(
-                  prop.children?.map((i) => renderResult(i as VirtualElement))!,
+                  prop.children?.map((i: any) =>
+                    renderResult(i as VirtualElement)
+                  )!,
                   1
                 );
                 virtualElement.result = Raw(prop.children as VirtualElement[]);
@@ -49,7 +51,7 @@ export default function NativeRender(virtualElement: VirtualElement) {
             } else {
               // children没了  要卸载掉
               unmountResult(virtualElement.result || []);
-              virtualElement.result = undefined;
+              virtualElement.result = undefined!;
               cb(o3.getTask());
             }
           });

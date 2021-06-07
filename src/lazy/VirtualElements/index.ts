@@ -68,7 +68,7 @@ export default class VirtualElement {
   }
   stop() {
     this.mainTask?.stop();
-    this.mainTask = undefined;
+    this.mainTask = undefined!;
   }
   exec(): IDomElement[] {
     if (typeof this.component === "function") {

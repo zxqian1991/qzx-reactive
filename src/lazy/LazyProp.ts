@@ -39,7 +39,7 @@ export class LazyProp {
     private virualElemet: VirtualElement // private props: FunctionalProp[] = [], // private children: FunctionalValue[] = []
   ) {
     this.id = this.virualElemet.id;
-    this.key = this.virualElemet.key;
+    this.key = this.virualElemet.key!;
     this.props = this.virualElemet.props;
     this.children = this.virualElemet.children;
     this.init();
@@ -349,7 +349,7 @@ export class LazyProp {
   }
   stop() {
     this.mainTask?.stop();
-    this.mainTask = undefined;
+    this.mainTask = undefined!;
   }
 
   update(

@@ -82,7 +82,7 @@ export class LazyTask<T = any> {
     private option: ILazyTaskOption = {}
   ) {
     const parent = getRunningTask();
-    this.parent = parent;
+    this.parent = parent!;
     this.root = parent ? parent.root! : this;
     this.level = parent ? parent.level! + 1 : 1;
     this.path = parent ? `${parent.path}-${this.id}` : `${this.id}`;
@@ -96,7 +96,7 @@ export class LazyTask<T = any> {
       return true;
     return !this.option.notRecord(t, k, v);
   }
-  run(reasons?: TaskChangeReason[]) {
+  run(reasons: TaskChangeReason[] = []) {
     if (this.stopped) {
       throw new Error("任务已终止！");
     }
@@ -121,7 +121,7 @@ export class LazyTask<T = any> {
         addSubTask: this.addSubTask,
         removeSubTask: this.removeSubTask,
         stop: this.stop,
-      }) || undefined;
+      }) || undefined!;
     setRunnintTask(lastTask);
   }
 
@@ -155,9 +155,9 @@ export class LazyTask<T = any> {
     this.subTasks.forEach((t) => t.stop());
     this.stopped = true;
     this.unsub?.(true);
-    this.unsub = undefined;
+    this.unsub = undefined!;
     this.subTasks.clear();
-    this.data = undefined;
+    this.data = undefined!;
     this.changeReasons = [];
   }
 

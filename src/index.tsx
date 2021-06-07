@@ -4,7 +4,10 @@ import { Lazyable } from "./lazy/Lazyable";
 import HTMLDOMDrive from "./lazy/LazyDom";
 import { generateArray } from "./lazy/utils/Array";
 import { PropType } from "./lazy/types";
-import { useCtx } from "./lazy/VirtualElements/Render/FunctionalRender";
+import {
+  useCtx,
+  useCreated,
+} from "./lazy/VirtualElements/Render/FunctionalRender";
 
 const data = Lazyable({
   count: 0,
@@ -46,7 +49,7 @@ function A(
     },
     computed: {
       size(): number {
-        console.log("i am size");
+        // console.log("i am size");
         return p.value + this.state.count;
       },
     },

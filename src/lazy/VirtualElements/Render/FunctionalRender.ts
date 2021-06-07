@@ -74,9 +74,6 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
               data.mounted.forEach((u) => u());
             }
           } else {
-            const data = FunctionalComponentStoreMap.get(
-              virtualElementFunctionalIndex
-            );
             diffResult(
               o2.id,
               formatResult(result),
@@ -88,17 +85,16 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
               }
             });
           }
-          return () => {
-            const data = FunctionalComponentStoreMap.get(
-              virtualElementFunctionalIndex
-            );
-            data?.unmount.forEach((u) => u());
-            FunctionalComponentStoreMap.delete(virtualElementFunctionalIndex);
-          };
         })
       );
       return () => {
         virtualElement.Prop?.stop();
+        const data = FunctionalComponentStoreMap.get(
+          virtualElementFunctionalIndex
+        );
+        data?.unmount.forEach((u) => u());
+        FunctionalComponentStoreMap.delete(virtualElementFunctionalIndex);
+        console.log("stop");
       };
     },
     {

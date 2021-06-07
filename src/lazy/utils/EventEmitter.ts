@@ -83,7 +83,7 @@ export class EventEmitter {
   once(eventname: string, handler: IEventEmitterHandler) {
     const unsubscribe = this.on(eventname, function (...args: any) {
       unsubscribe();
-      return handler.apply(this, args);
+      return handler.apply(null, args);
     });
   }
 }
