@@ -31,33 +31,28 @@ export default function FragmentRender(virtualElement: VirtualElement) {
               return formatResult(res);
             });
             if (o2.runTime === 1) {
-              runExcludeTask(() => {
-                o1.setData(renderResult(fr));
-              });
+              renderResult(fr, virtualElement.parent!);
               virtualElement.result = fr;
             } else {
-              diffResult(o2.id, fr, virtualElement.result!).then(
-                ({ result: Res, elements }) => {
-                  virtualElement.result = Res;
-                  if (elements && elements.length > 0) {
-                    o1.setData(elements);
-                  }
-                }
+              const { result: Res } = diffResult(
+                o2.id,
+                fr,
+                virtualElement.result!
               );
+              virtualElement.result = Res;
             }
           } else {
             if (o2.runTime === 1) {
               const children = prop.children as VirtualElement[];
-              o1.setData(flattern(children.map((i) => renderResult(i))));
+              children.map((i) => renderResult(i, virtualElement.parent!));
               virtualElement.result = children;
             } else {
-              diffResult(
+              const { result } = diffResult(
                 o2.id,
                 prop.children as VirtualElement[],
                 virtualElement.result!
-              ).then(({ result }) => {
-                virtualElement.result = result;
-              });
+              );
+              virtualElement.result = result;
             }
           }
         })

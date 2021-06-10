@@ -10,15 +10,14 @@ import {
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { renderResult, unmountResult } from "../common";
-import { runByChunk } from "../../utils";
 
 export default function NativeRender(virtualElement: VirtualElement) {
-  return new LazyTask<IDomElement[]>(
+  return new LazyTask(
     (o1) => {
       const component = virtualElement.component as string;
       virtualElement.native = lazyDocument.createElement(component);
+      virtualElement.parent?.append(virtualElement.native!);
       virtualElement.Prop = o1.except(() => new LazyProp(virtualElement));
-      o1.setData([virtualElement.native!]);
       const prop = virtualElement.Prop.getProp();
       const rawProp = Raw(prop);
       const handle = (p: string, cb: (t: LazyTask) => void) => {
@@ -29,14 +28,9 @@ export default function NativeRender(virtualElement: VirtualElement) {
               if (o3.runTime === 1) {
                 const eles: IDomElement[] = [];
                 virtualElement.result = Raw(prop.children as VirtualElement[]);
-                runByChunk(
-                  prop.children?.map((i: any) => async () => {
-                    const elements = renderResult(i as VirtualElement);
-                    elements.forEach((e) => eles.push(e));
-                    virtualElement.native?.append(flattern(elements));
-                    await lazyDocument.canRunning();
-                  })
-                );
+                prop.children?.map((i: any) => {
+                  renderResult(i as VirtualElement, virtualElement.native!);
+                });
                 // 将结果添加到dom中
               } else {
                 const children = prop.children! as any[];
@@ -44,18 +38,14 @@ export default function NativeRender(virtualElement: VirtualElement) {
                 if (children.length !== oldChildren.length) {
                   throw new Error("something happend in natvie children");
                 }
-                runByChunk(
-                  children.map((child, index) => async () => {
-                    const { result } = await diffResult(
-                      `${o3.id}-${index}`,
-                      child,
-                      oldChildren[index]
-                    );
-                    oldChildren[index] = result;
-                  })
-                );
-
-                // o3.setData(diffResult(prop.children, o3.getData()).result);
+                children.map((child, index) => {
+                  const { result } = diffResult(
+                    `${o3.id}-${index}`,
+                    child,
+                    oldChildren[index]
+                  );
+                  oldChildren[index] = result;
+                });
               }
             } else {
               // children没了  要卸载掉

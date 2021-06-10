@@ -37,7 +37,7 @@ export interface IDocument {
 }
 
 export interface IDomElement {
-  append: (eles: IDomElement[]) => void;
+  append: (eles: IDomElement[] | IDomElement) => void;
   nextSibling: IDomElement | null;
   preSibling: IDomElement | null;
   parent: IDomElement | null;

@@ -17,13 +17,14 @@ class MyBaseElement implements IDomElement {
     }
   }
   constructor(private dom: Text | HTMLElement) {}
-  append(eles: IDomElement[]) {
-    eles.forEach((ele) => {
-      // 得保证都是 MyBaseElement类型 Ts的优势出来了
-      if (ele instanceof MyBaseElement) {
-        this.dom.appendChild(ele.dom);
+  append(eles: IDomElement[] | IDomElement) {
+    if (Array.isArray(eles)) {
+      eles.forEach((ele) => this.append(ele));
+    } else {
+      if (eles instanceof MyBaseElement) {
+        this.dom.appendChild(eles.dom);
       }
-    });
+    }
   }
   get nextSibling(): IDomElement | null {
     const sib = this.dom.nextSibling || this.dom.nextElementSibling;

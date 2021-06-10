@@ -34,18 +34,21 @@ export function formatResult(
  * @returns
  */
 export function renderResult(
-  _result: FormattedElementResultType
-): IDomElement[] {
+  _result: FormattedElementResultType,
+  parent: IDomElement,
+  nextSibling?: IDomElement
+) {
   const result = Raw(_result);
   if (Array.isArray(result)) {
-    return flattern(
-      result.map((i) => renderResult(i)),
-      1
-    );
+    result.forEach((i) => renderResult(i, parent, nextSibling));
   } else if (result instanceof VirtualElement) {
-    return result.exec();
+    return result.exec(parent);
   }
-  return [result];
+  lazyDocument.insertElements([result as ITextElement], {
+    parent,
+    nextSibling: nextSibling || null,
+    preSibling: null,
+  });
 }
 
 /**

@@ -42,6 +42,8 @@ export default class VirtualElement {
   native?: IDomElement;
   Prop?: LazyProp;
 
+  parent?: IDomElement;
+
   getKey() {
     return runExcludeTask(() => {
       return this.key?.();
@@ -54,15 +56,15 @@ export default class VirtualElement {
     public props: FunctionalProp[],
     public children: FunctionalValue[]
   ) {}
-  private execFunctional(): IDomElement[] {
+  private execFunctional() {
     this.mainTask = FunctionalRender(this);
     return this.mainTask.getData() || [];
   }
-  private execFragment(): IDomElement[] {
+  private execFragment() {
     this.mainTask = FragmentRender(this);
     return this.mainTask.getData() || [];
   }
-  private execNative(): IDomElement[] {
+  private execNative() {
     this.mainTask = NativeRender(this);
     return this.mainTask.getData() || [];
   }
@@ -70,7 +72,8 @@ export default class VirtualElement {
     this.mainTask?.stop();
     this.mainTask = undefined!;
   }
-  exec(): IDomElement[] {
+  exec(parent: IDomElement) {
+    this.parent = parent;
     if (typeof this.component === "function") {
       this.isFunction = true;
       return this.execFunctional();

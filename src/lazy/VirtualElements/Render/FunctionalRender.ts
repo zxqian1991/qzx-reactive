@@ -1,5 +1,5 @@
 import VirtualElement, { ElementResultType } from "..";
-import { LazyTask, IDomElement, PropType, runExcludeTask } from "../..";
+import { LazyTask, PropType, runExcludeTask } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { formatResult, renderResult } from "../common";
@@ -40,7 +40,7 @@ let TempRunningFunctionalComponent = 0;
 const FunctionalComponentStoreMap = new Map<number, FunctionComponentStore>();
 
 export default function FunctionalRender(virtualElement: VirtualElement) {
-  return new LazyTask<IDomElement[]>(
+  return new LazyTask(
     (o1) => {
       o1.except(() => (virtualElement.Prop = new LazyProp(virtualElement)));
       // 设置当前函数组件的一个唯一ID
@@ -61,7 +61,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
             // 渲染结果
             const fr = runExcludeTask(() => {
               const fr = formatResult(result);
-              o1.setData(renderResult(fr));
+              renderResult(fr, virtualElement.parent!);
               return fr;
             });
             virtualElement.result = fr;
@@ -80,9 +80,6 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
               virtualElement.result!
             ).then(({ result: Res, elements }) => {
               virtualElement.result = Res;
-              if (elements && elements.length > 0) {
-                o1.setData(elements);
-              }
             });
           }
         })

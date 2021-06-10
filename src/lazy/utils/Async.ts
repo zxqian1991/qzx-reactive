@@ -102,15 +102,3 @@ export class Throttle {
 export function waitTime(time: number = 0) {
   return new Promise((resolve) => setTimeout(() => resolve(true), time));
 }
-
-export async function runByChunk(
-  hs: ((...args: any[]) => any)[] = [],
-  chunk = 1
-) {
-  const res: any[] = [];
-  for (let i = 0; i < hs.length; i += chunk) {
-    const arr = hs.slice(i, i + chunk);
-    res.push(await Promise.all(arr.map((h) => h())));
-  }
-  return flattern(res);
-}
