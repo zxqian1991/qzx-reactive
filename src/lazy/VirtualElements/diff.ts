@@ -9,7 +9,7 @@ import {
 import { getElements, renderResult, unmountResult } from "./common";
 
 export default function diffResult(
-  id: number | string,
+  id: number | string, // 保留 方便以后做异步中断
   newResult: FormattedElementResultType,
   oldResult: FormattedElementResultType
 ) {
@@ -50,7 +50,6 @@ export default function diffResult(
     let nextElement: IDomElement | null = elements[0];
     let parent = nextElement?.parent;
     const newReturnResult: FormattedElementResultType = [];
-    const returnElements: (IDomElement | IDomElement[])[] = [];
     for (let i = 0; i < newResult.length; i++) {
       const r = newResult[i];
       if (r instanceof VirtualElement) {
@@ -73,33 +72,37 @@ export default function diffResult(
             if (or.id === r.id) {
               // or.Prop?.update(r.id, r.props, r.children);
               newReturnResult.push(or);
-              const newElements = or.getElements();
-              returnElements.push(newElements);
-              // 老结果的位置就是当前nextElement所在的那个index的位置  那就更新老结果
-              if (oldPosition === positionIndex) {
-                while (positionIndex < oldResult.length) {
-                  positionIndex++;
-                  if (positionIndex >= oldResult.length) {
-                    nextElement = elements[elements.length - 1].nextSibling;
-                    parent = nextElement?.parent || parent;
-                  } else if (!usedOldIndex.has(positionIndex)) {
-                    // 这个位置的元素可能已经被用过了 要忽略
-                    // 如果这个位置没被用过 那就要用起来
-                    elements = getElements(oldResult[positionIndex]);
-                    nextElement = elements[0];
-                    parent = nextElement.parent || parent;
-                    // 跳出循环
-                    break;
-                  }
-                }
-              } else {
-                // 在老结果中有对应的元素   不管在哪里 他肯定要移到nextElement前面
-                // newElements.forEach((r) => r.remove());
+              // 就在前面 不用移动
+              if (positionIndex - oldPosition === 1) continue;
+              // 要移动的元素在后面 把positionIndex指向更后面~~
+              const isOldPositionAfterPositionIndexOneStep =
+                oldPosition - positionIndex === 1;
+              if (isOldPositionAfterPositionIndexOneStep)
+                positionIndex = oldPosition; // 指向当前元素
+              // 位置不同 把元素插进来
+              if (oldPosition !== positionIndex) {
+                const newElements = or.getElements();
                 lazyDocument.insertElements(newElements, {
                   parent,
                   nextSibling: nextElement,
                   preSibling: nextElement?.preSibling || null,
                 });
+              }
+              // positionIndex向后移动一位
+              while (positionIndex < oldResult.length) {
+                positionIndex++;
+                if (positionIndex >= oldResult.length) {
+                  nextElement = elements[elements.length - 1].nextSibling;
+                  parent = nextElement?.parent || parent;
+                } else if (!usedOldIndex.has(positionIndex)) {
+                  // 这个位置的元素可能已经被用过了 要忽略
+                  // 如果这个位置没被用过 那就要用起来
+                  elements = getElements(oldResult[positionIndex]);
+                  nextElement = elements[0];
+                  parent = nextElement.parent || parent;
+                  // 跳出循环
+                  break;
+                }
               }
               continue;
             }

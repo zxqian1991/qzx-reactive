@@ -9,12 +9,21 @@ import { useCtx } from "./lazy/VirtualElements/Render/FunctionalRender";
 let id = 0;
 const data = Lazyable({
   count: 0,
-  arr: generateArray(10000, (i) => ({ value: i, id: id++ })),
+  arr: generateArray(10, (i) => ({ value: i, id: id++ })),
 } as { count: number; arr: { value: number; id: number }[]; ref: any; size: number });
 Lazyman.drive(HTMLDOMDrive);
 Lazyman.render(
   <>
     <div>
+      <button
+        onClick={() => {
+          const last = data.arr[data.arr.length - 1];
+          data.arr.pop();
+          data.arr.unshift(last);
+        }}
+      >
+        最后一个放到最前面
+      </button>
       <button onClick={() => data.count++}>count + 1</button>
       <button
         onClick={() => data.arr.unshift({ value: data.arr.length, id: id++ })}
