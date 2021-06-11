@@ -61,7 +61,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
             // 渲染结果
             const fr = runExcludeTask(() => {
               const fr = formatResult(result);
-              renderResult(fr, virtualElement.parent!);
+              renderResult(fr, virtualElement.position!);
               return fr;
             });
             virtualElement.result = fr;
@@ -74,13 +74,12 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
               data.mounted.forEach((u) => u());
             }
           } else {
-            diffResult(
+            const { result: Res } = diffResult(
               o2.id,
               formatResult(result),
               virtualElement.result!
-            ).then(({ result: Res, elements }) => {
-              virtualElement.result = Res;
-            });
+            );
+            virtualElement.result = Res;
           }
         })
       );
@@ -91,7 +90,6 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
         );
         data?.unmount.forEach((u) => u());
         FunctionalComponentStoreMap.delete(virtualElementFunctionalIndex);
-        console.log("stop");
       };
     },
     {

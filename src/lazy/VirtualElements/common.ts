@@ -35,20 +35,15 @@ export function formatResult(
  */
 export function renderResult(
   _result: FormattedElementResultType,
-  parent: IDomElement,
-  nextSibling?: IDomElement
+  position: IDomPosition
 ) {
   const result = Raw(_result);
   if (Array.isArray(result)) {
-    result.forEach((i) => renderResult(i, parent, nextSibling));
+    result.forEach((i) => renderResult(i, position));
   } else if (result instanceof VirtualElement) {
-    return result.exec(parent);
+    return result.exec(position);
   }
-  lazyDocument.insertElements([result as ITextElement], {
-    parent,
-    nextSibling: nextSibling || null,
-    preSibling: null,
-  });
+  lazyDocument.insertElements([result as ITextElement], position);
 }
 
 /**

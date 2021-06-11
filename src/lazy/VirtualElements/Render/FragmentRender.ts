@@ -9,6 +9,7 @@ import {
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { formatResult, renderResult } from "../common";
+import { Raw } from "../../Lazyable";
 
 export default function FragmentRender(virtualElement: VirtualElement) {
   return new LazyTask<IDomElement[]>(
@@ -19,11 +20,13 @@ export default function FragmentRender(virtualElement: VirtualElement) {
         return new LazyProp(virtualElement);
       });
       const prop = virtualElement.Prop.getProp();
+      // const rawProp = Raw(prop);
       o1.addSubTask(
         new LazyTask((o2) => {
           if (typeof virtualElement.id === "string") {
             const children = prop.children || [];
-            if (children.length <= 0)
+            const rawChildren = Raw(children);
+            if (rawChildren.length <= 0)
               throw new Error("formatted fragment can not be Empty");
             const h = children[0] as FunctionalValue;
             const res = h();
@@ -31,7 +34,7 @@ export default function FragmentRender(virtualElement: VirtualElement) {
               return formatResult(res);
             });
             if (o2.runTime === 1) {
-              renderResult(fr, virtualElement.parent!);
+              renderResult(fr, virtualElement.position!);
               virtualElement.result = fr;
             } else {
               const { result: Res } = diffResult(
@@ -42,17 +45,25 @@ export default function FragmentRender(virtualElement: VirtualElement) {
               virtualElement.result = Res;
             }
           } else {
-            if (o2.runTime === 1) {
-              const children = prop.children as VirtualElement[];
-              children.map((i) => renderResult(i, virtualElement.parent!));
-              virtualElement.result = children;
-            } else {
-              const { result } = diffResult(
-                o2.id,
-                prop.children as VirtualElement[],
-                virtualElement.result!
+            const children = prop.children as VirtualElement[];
+            const rawChildren = Raw(children);
+            virtualElement.result = rawChildren;
+            for (let i = 0; i < rawChildren.length; i++) {
+              o2.addSubTask(
+                new LazyTask((o3) => {
+                  if (o3.runTime === 1) {
+                    const child = children[i];
+                    renderResult(child, virtualElement.position!);
+                  } else {
+                    const { result } = diffResult(
+                      o2.id,
+                      children[i],
+                      (virtualElement.result! as any)[i]
+                    );
+                    (virtualElement.result as any)[i] = result;
+                  }
+                })
               );
-              virtualElement.result = result;
             }
           }
         })

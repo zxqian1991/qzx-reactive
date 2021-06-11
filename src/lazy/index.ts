@@ -39,7 +39,11 @@ const Lazyman = {
   render(ele: ElementResultType, container: IDomElement) {
     if (!container) throw new Error("container is Emptry");
     const formatted = formatResult(ele);
-    renderResult(formatted, container);
+    renderResult(formatted, {
+      parent: container,
+      nextSibling: null,
+      preSibling: null,
+    });
     return {
       unmount() {
         unmountResult(formatted);

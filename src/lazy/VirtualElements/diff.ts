@@ -20,7 +20,7 @@ export default function diffResult(
     newResult.component === oldResult.component &&
     newResult.id === oldResult.id
   ) {
-    oldResult.Prop?.update(newResult.id, newResult.props, newResult.children);
+    // oldResult.Prop?.update(newResult.id, newResult.props, newResult.children);
     return { result: oldResult };
   } else if (Array.isArray(newResult) && Array.isArray(oldResult)) {
     const oldKeymap = new Map<any, Map<any, number>>();
@@ -71,7 +71,7 @@ export default function diffResult(
             usedOldIndex.add(oldPosition);
             const or = oldResult[oldPosition] as VirtualElement;
             if (or.id === r.id) {
-              or.Prop?.update(r.id, r.props, r.children);
+              // or.Prop?.update(r.id, r.props, r.children);
               newReturnResult.push(or);
               const newElements = or.getElements();
               returnElements.push(newElements);
@@ -106,7 +106,7 @@ export default function diffResult(
           }
         }
       }
-      renderResult(r, parent!, nextElement!);
+      renderResult(r, { parent, nextSibling: nextElement, preSibling: null });
       // 存储结果
       newReturnResult.push(r);
     }
@@ -134,6 +134,6 @@ export default function diffResult(
   }
   const position = unmountResult(oldResult);
   if (!position) throw new Error("Old Virtual Element is Error!");
-  renderResult(newResult, position.parent!, position.nextSibling!);
+  renderResult(newResult, position);
   return { result: newResult };
 }

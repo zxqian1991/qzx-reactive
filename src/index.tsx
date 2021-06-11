@@ -4,35 +4,37 @@ import { Lazyable } from "./lazy/Lazyable";
 import HTMLDOMDrive from "./lazy/LazyDom";
 import { generateArray } from "./lazy/utils/Array";
 import { PropType } from "./lazy/types";
-import {
-  useCtx,
-  useCreated,
-} from "./lazy/VirtualElements/Render/FunctionalRender";
+import { useCtx } from "./lazy/VirtualElements/Render/FunctionalRender";
 
+let id = 0;
 const data = Lazyable({
   count: 0,
-  arr: generateArray(10000, (i) => ({ value: i })),
-} as { count: number; arr: { value: number }[]; ref: any; size: number });
+  arr: generateArray(10000, (i) => ({ value: i, id: id++ })),
+} as { count: number; arr: { value: number; id: number }[]; ref: any; size: number });
 Lazyman.drive(HTMLDOMDrive);
 Lazyman.render(
-  <div>
+  <>
     <div>
       <button onClick={() => data.count++}>count + 1</button>
-      <button onClick={() => data.arr.push({ value: data.arr.length })}>
+      <button
+        onClick={() => data.arr.unshift({ value: data.arr.length, id: id++ })}
+      >
         新增
       </button>
       <button
         onClick={() => {
-          data.arr.pop();
+          data.arr.shift();
         }}
       >
         减少
       </button>
     </div>
-    {data.arr.map((i, index) => (
-      <A key={index} value={i.value + data.arr.length + data.count} />
-    ))}
-  </div>,
+    <div>
+      {data.arr.map((i, index) => (
+        <A key={i.id} value={i.value} />
+      ))}
+    </div>
+  </>,
   lazyDocument.querySelector("#root")!
 );
 
@@ -41,28 +43,11 @@ function A(
   p: PropType<{ value: number }>,
   ctx = useCtx({
     state: {
-      count: 1,
-    },
-    computed: {
-      size(): number {
-        // console.log("i am size");
-        return p.value + this.state.count;
-      },
-    },
-    lifeCycle: {
-      onCreated() {
-        return () => console.log("i am created Unmount");
-      },
-      onMounted() {
-        return () => console.log("i am mounted Unmount");
-      },
-    },
-    methods: {
-      addCount() {
-        this.state.count++;
-      },
+      count: 0,
     },
   })
 ) {
-  return <div onClick={ctx.addCount}>{ctx.computed.size}</div>;
+  return (
+    <div onClick={() => ctx.state.count++}>{ctx.state.count + p.value}</div>
+  );
 }

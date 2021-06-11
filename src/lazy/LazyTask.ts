@@ -241,7 +241,13 @@ function removeRely(task: LazyTask) {
   });
 }
 
+// let count = 0;
+// lazyDocument.onIdle(() => {
+//   console.log(count);
+//   count = 0;
+// });
 onLazyable("get", (t, k, v) => {
+  // count++;
   // 任务得允许被记录
   if (
     TMEP_RUNNING_TASK &&
@@ -251,39 +257,29 @@ onLazyable("get", (t, k, v) => {
   }
 });
 
-/**
- * 判断target是不是node的父亲节点
- * @param node 判断的节点
- * @param target 被比较的节点
- * @returns
- */
-function isParentNode(node: string, target: string, sep = "-") {
-  return (
-    node.length > target.length &&
-    node.indexOf(target) === 0 &&
-    node[target.length] === sep
-  );
-}
-
 let tasksToRun = new Set<LazyTask>();
-let isInLifeCycle = false;
-const lifeCycleGap = 10;
 function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
-  task.addReason(reasons);
-  tasksToRun.add(task);
-  // 已经在运行中 可以开启新的setTimeout计时了
-  if (!isInLifeCycle) {
-    isInLifeCycle = true;
-    setTimeout(async () => {
-      isInLifeCycle = false;
-      const rawTasks = Array.from(tasksToRun);
-      tasksToRun.clear();
-      for (let i = 0; i < rawTasks.length; i++) {
-        rawTasks[i].restart();
-      }
-    }, lifeCycleGap);
+  if (!tasksToRun.has(task)) {
+    task.addReason(reasons);
+    tasksToRun.add(task);
   }
 }
+lazyDocument.onIdle(async () => {
+  if (tasksToRun.size > 0) {
+    const rawTasks = Array.from(tasksToRun).sort((a, b) =>
+      a.path && b.path ? a.path?.length - b.path.length : 0
+    );
+    tasksToRun.clear();
+    for (let i = 0; i < rawTasks.length; i++) {
+      const task = rawTasks[i];
+      if (tasksToRun.has(task)) {
+        // tasksToRun.delete(task)
+        continue;
+      }
+      task.restart();
+    }
+  }
+});
 
 onLazyable("set", (t, k, v, ov, isAdd) => {
   TARGET_TASK_RELY.get(t)

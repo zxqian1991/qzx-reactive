@@ -16,7 +16,11 @@ export default function NativeRender(virtualElement: VirtualElement) {
     (o1) => {
       const component = virtualElement.component as string;
       virtualElement.native = lazyDocument.createElement(component);
-      virtualElement.parent?.append(virtualElement.native!);
+      // virtualElement.parent?.append(virtualElement.native!);
+      lazyDocument.insertElements(
+        [virtualElement.native!],
+        virtualElement.position!
+      );
       virtualElement.Prop = o1.except(() => new LazyProp(virtualElement));
       const prop = virtualElement.Prop.getProp();
       const rawProp = Raw(prop);
@@ -25,27 +29,31 @@ export default function NativeRender(virtualElement: VirtualElement) {
           // children的需要特殊处理
           return new LazyTask<VirtualElement[]>((o3) => {
             if (rawProp.hasOwnProperty(p)) {
-              if (o3.runTime === 1) {
-                const eles: IDomElement[] = [];
-                virtualElement.result = Raw(prop.children as VirtualElement[]);
-                prop.children?.map((i: any) => {
-                  renderResult(i as VirtualElement, virtualElement.native!);
-                });
-                // 将结果添加到dom中
-              } else {
-                const children = prop.children! as any[];
-                const oldChildren = virtualElement.result as any[];
-                if (children.length !== oldChildren.length) {
-                  throw new Error("something happend in natvie children");
-                }
-                children.map((child, index) => {
-                  const { result } = diffResult(
-                    `${o3.id}-${index}`,
-                    child,
-                    oldChildren[index]
-                  );
-                  oldChildren[index] = result;
-                });
+              const rawChildren = rawProp.children;
+              virtualElement.result = rawChildren;
+              for (let i = 0; i < rawChildren.length; i++) {
+                o3.addSubTask(
+                  new LazyTask((o4) => {
+                    const child = prop.children[i];
+                    const rawChild = Raw(child);
+                    if (o4.runTime === 1) {
+                      renderResult(rawChild, {
+                        parent: virtualElement.native!,
+                        nextSibling: null,
+                        preSibling: null,
+                      });
+                    } else {
+                      const oldChildren = virtualElement.result as any[];
+                      const oldChild = oldChildren[i];
+                      const { result } = diffResult(
+                        `${o3.id}-${i}`,
+                        rawChild,
+                        oldChild
+                      );
+                      oldChildren[i] = result;
+                    }
+                  })
+                );
               }
             } else {
               // children没了  要卸载掉
@@ -65,7 +73,7 @@ export default function NativeRender(virtualElement: VirtualElement) {
                 virtualElement.native?.removeAttribute(p, oldV);
                 o3.setData(newV);
                 // 设置属性
-                virtualElement.native?.setAttribute(p, prop[p]);
+                virtualElement.native?.setAttribute(p, newV);
               }
             } else {
               // 移除属性

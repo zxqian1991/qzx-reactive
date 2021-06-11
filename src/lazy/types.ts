@@ -24,8 +24,8 @@ export type FunctionalProp = {
 };
 export interface IDomPosition {
   parent: IDomElement | null;
-  nextSibling: IDomElement | null;
-  preSibling: IDomElement | null;
+  nextSibling: IDomElement | null | undefined;
+  preSibling: IDomElement | null | undefined;
 }
 export interface IDocument {
   isTextElement: (result: any) => boolean;

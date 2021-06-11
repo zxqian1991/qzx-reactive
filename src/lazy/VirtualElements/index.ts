@@ -1,7 +1,6 @@
 import {
   FunctionalValue,
   ITextElement,
-  PropType,
   LazyTask,
   IDomElement,
   runExcludeTask,
@@ -42,7 +41,7 @@ export default class VirtualElement {
   native?: IDomElement;
   Prop?: LazyProp;
 
-  parent?: IDomElement;
+  position?: IDomPosition;
 
   getKey() {
     return runExcludeTask(() => {
@@ -72,8 +71,8 @@ export default class VirtualElement {
     this.mainTask?.stop();
     this.mainTask = undefined!;
   }
-  exec(parent: IDomElement) {
-    this.parent = parent;
+  exec(position: IDomPosition) {
+    this.position = position;
     if (typeof this.component === "function") {
       this.isFunction = true;
       return this.execFunctional();

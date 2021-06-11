@@ -60,8 +60,7 @@ export class LazyProp {
       this.prop.children = this.children;
       return;
     }
-
-    // fragment类型的数据不用处理
+    const raw = this.prop.children;
     const result = this.children.map(
       (i, index) =>
         new VirtualElement(
@@ -73,6 +72,7 @@ export class LazyProp {
         )
     );
     this.prop.children = result;
+
     // 给children重新赋值 这回触发更新 更新时根据key + fragment进行对比
   }
 
@@ -350,27 +350,5 @@ export class LazyProp {
   stop() {
     this.mainTask?.stop();
     this.mainTask = undefined!;
-  }
-
-  update(
-    id: number | string,
-    props: FunctionalProp[] = [],
-    children: FunctionalValue[] = []
-  ) {
-    // 先获取到旧的属性列表
-    const oldSet = new Set(this.store.keys());
-    // 停止一切的任务 + 清空store
-    this.stop();
-    this.id = id;
-    this.props = props;
-    this.children = children;
-    // 重新计算
-    this.init();
-    // 获取新计算得到的属性列表
-    const newSet = new Set(this.store.keys());
-    // 过滤相同的属性 留下不同的
-    newSet.forEach((property) => oldSet.delete(property));
-    // 移除不需要的属性
-    oldSet.forEach((property) => delete this.prop[property]);
   }
 }

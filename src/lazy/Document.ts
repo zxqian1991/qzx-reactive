@@ -1,4 +1,5 @@
 import { IDocument, IDomElement, IDomPosition } from "./types";
+
 export class LazyDocument implements IDocument {
   isTextElement(d: any) {
     return undefined as any;
@@ -40,6 +41,23 @@ export class LazyDocument implements IDocument {
   }
   async canRunning() {
     return true;
+  }
+
+  onIdle(h: () => void): () => void {
+    const me = this;
+    let stop = false;
+    function run(autoRun = true) {
+      if (autoRun) {
+        h();
+      }
+      if (!stop) {
+        me.canRunning().then(run);
+      }
+    }
+    run(false);
+    return () => {
+      stop = true;
+    };
   }
 }
 
