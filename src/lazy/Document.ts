@@ -1,5 +1,6 @@
 import { IDocument, IDomElement, IDomPosition } from "./types";
 
+let nextTicks: VoidFunction[] = [];
 export class LazyDocument implements IDocument {
   isTextElement(d: any) {
     return undefined as any;
@@ -41,6 +42,15 @@ export class LazyDocument implements IDocument {
   }
   async canRunning() {
     return true;
+  }
+
+  nextTick(h: VoidFunction) {
+    nextTicks.push(h);
+  }
+  runNextTicks() {
+    const next = nextTicks;
+    nextTicks = [];
+    next.forEach((n) => n());
   }
 
   onIdle(h: () => void): () => void {

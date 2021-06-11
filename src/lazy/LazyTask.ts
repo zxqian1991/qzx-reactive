@@ -266,9 +266,7 @@ function addLifeTask(task: LazyTask, reasons: TaskChangeReason[]) {
 }
 lazyDocument.onIdle(async () => {
   if (tasksToRun.size > 0) {
-    const rawTasks = Array.from(tasksToRun).sort((a, b) =>
-      a.path && b.path ? a.path?.length - b.path.length : 0
-    );
+    const rawTasks = Array.from(tasksToRun);
     tasksToRun.clear();
     for (let i = 0; i < rawTasks.length; i++) {
       const task = rawTasks[i];
@@ -278,6 +276,8 @@ lazyDocument.onIdle(async () => {
       }
       task.restart();
     }
+    // 运行nextTick
+    lazyDocument.runNextTicks();
   }
 });
 
