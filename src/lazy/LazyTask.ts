@@ -319,43 +319,53 @@ export function cloneLazyableObject<T extends Record<string, any>>(
   object: T,
   parentTask = getRunningTask()
 ) {
-  if (isLazyabledData(object)) {
-    const data: T = Lazyable({}) as T;
-    const tasks = new Map<string, LazyTask>();
-    const task = new LazyTask((o) => {
-      // 监听删除事件
-      const unsubDelete = onLazyable("delete", object, (t, k) => {
-        const task = tasks.get(k as string);
-        if (task) {
-          o.removeSubTask(task);
-        }
-        // 别忘了删除自己对象的key值
-        delete data[k as string];
-      });
-      const unsubAdd = onLazyable("add", object, (t, k, v) => {
-        const tempTask = new LazyTask(() => {
-          (data as any)[k] = object[k as string];
-        });
-        tasks.set(k as string, task);
-        o.addSubTask(tempTask);
-      });
-      for (let key in object) {
-        const tempTask = new LazyTask(() => {
-          data[key] = object[key];
-        });
-        tasks.set(key, task);
-        o.addSubTask(tempTask);
+  const data: T = Lazyable({}) as T;
+  const tasks = new Map<string, LazyTask>();
+  let isParentSet = false;
+  const task = new LazyTask((o) => {
+    // 监听删除事件
+    const unsubDelete = onLazyable("delete", object, (t, k) => {
+      const task = tasks.get(k as string);
+      if (task) {
+        o.removeSubTask(task);
       }
-      return () => {
-        tasks.clear();
-        unsubDelete();
-        unsubAdd();
-      };
+      // 别忘了删除自己对象的key值
+      delete data[k as string];
     });
-    if (parentTask) {
-      parentTask.addSubTask(task);
+    const unsubSet = onLazyable("set", data, (t, k) => {
+      if (!isParentSet && tasks.has(k as string)) {
+        const task = tasks.get(k as string)!;
+        o.removeSubTask(task);
+        tasks.delete(k as string);
+      }
+    });
+    const unsubAdd = onLazyable("add", object, (t, k, v) => {
+      const tempTask = new LazyTask(() => {
+        isParentSet = true;
+        (data as any)[k] = object[k as string];
+        isParentSet = false;
+      });
+      tasks.set(k as string, tempTask);
+      o.addSubTask(tempTask);
+    });
+    for (let key in object) {
+      const tempTask = new LazyTask(() => {
+        isParentSet = true;
+        data[key] = object[key];
+        isParentSet = false;
+      });
+      tasks.set(key, tempTask);
+      o.addSubTask(tempTask);
     }
-    return data;
+    return () => {
+      tasks.clear();
+      unsubDelete();
+      unsubAdd();
+      unsubSet();
+    };
+  });
+  if (parentTask) {
+    parentTask.addSubTask(task);
   }
-  return Object.assign({}, object);
+  return data;
 }

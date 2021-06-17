@@ -18,13 +18,16 @@ declare namespace X {
     nextTick: (h: () => void) => void;
   };
 
-  export interface IFunctionalContext {}
+  export interface IFunctionalContext {
+    age: number;
+  }
   export type FunctionComponentStore<T = any, C = any, S = any, M = any> = {
     inited: boolean; // 是否已经初始化
     unmount: (() => void)[]; // 卸载的时候的回调
     mounted: (() => void)[]; // 组件已装载
     nextticks: (() => void)[];
     context: FunctionContextType<T, C, S, M>;
+    virtualElement: VirtualElement;
   };
 
   export type FunctionalComponent<P extends PropType, S = any> = (

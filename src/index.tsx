@@ -1,6 +1,6 @@
 // import React from "react";
 import Lazyman, { lazyDocument } from "./lazy/index";
-import { Lazyable } from "./lazy/Lazyable";
+import { Lazyable, Raw } from "./lazy/Lazyable";
 import HTMLDOMDrive from "./lazy/LazyDom";
 import { generateArray } from "./lazy/utils/Array";
 
@@ -65,7 +65,26 @@ function A(
     },
   })
 ) {
+  ctx.setStore("age", 100);
   return (
-    <div onClick={() => ctx.state.count++}>{ctx.state.count + p.value}</div>
+    <div>
+      <div onClick={() => ctx.store.age!++}>
+        {ctx.state.count + p.value}:{ctx.store.age}
+      </div>
+      <B />
+    </div>
+  );
+}
+
+function B(p: X.PropType, ctx = useCtx({})) {
+  return (
+    <div
+      onClick={() => {
+        console.log(ctx.store);
+        ctx.store.age! += 4;
+      }}
+    >
+      {ctx.store.age || "dddd"}
+    </div>
   );
 }

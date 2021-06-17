@@ -7,7 +7,7 @@ export default function diffResult(
   newResult: FormattedElementResultType,
   oldResult: FormattedElementResultType,
   level: number,
-  ctx: X.IFunctionalContext
+  ctx: Partial<X.IFunctionalContext>
 ) {
   // 都是虚拟DOM 看类型是否一样
   if (

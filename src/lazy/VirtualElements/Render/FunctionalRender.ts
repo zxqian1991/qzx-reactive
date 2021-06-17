@@ -23,6 +23,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
           // 执行函数 支持hooks基础功能
           const result = execFunctionalComponent(
             virtualElementFunctionalIndex,
+            virtualElement,
             (data) =>
               (virtualElement.component as X.FunctionalComponent<X.PropType>)(
                 prop,
@@ -36,22 +37,12 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
               const data = FunctionalComponentStoreMap.get(
                 virtualElementFunctionalIndex
               )!;
-              const store: Partial<X.IFunctionalContext> = cloneLazyableObject(
-                virtualElement.ctx,
-                o2.getTask()
-              );
-              data.context.setStore = function <
-                K extends keyof X.IFunctionalContext
-              >(key: K, v: X.IFunctionalContext[K]) {
-                store[key] = v;
-              };
-              // Object.assign(data.context, virtualElement.ctx || {}, {});
               renderResult(
                 fr,
                 virtualElement.position!,
                 virtualElement.level,
                 // 替换成自己的store
-                store
+                data.context.store
               );
               return fr;
             });
@@ -98,6 +89,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
  */
 function execFunctionalComponent<P extends X.PropType>(
   index: number,
+  virtualElement: VirtualElement,
   func: (data: X.FunctionComponentStore) => ElementResultType
 ) {
   // 初始化函数组件的数据
@@ -110,6 +102,7 @@ function execFunctionalComponent<P extends X.PropType>(
       mounted: [],
       nextticks: [],
       context: {},
+      virtualElement,
     });
   }
   // 执行
@@ -204,6 +197,13 @@ export function useCtx<
       // 无法被复制
       computed,
       services,
+      store: cloneLazyableObject(data.virtualElement.ctx),
+      setStore: function <K extends keyof X.IFunctionalContext>(
+        key: K,
+        v: X.IFunctionalContext[K]
+      ) {
+        this.store[key] = v;
+      },
     };
     if (option.lifeCycle) {
       for (let life in option.lifeCycle) {
