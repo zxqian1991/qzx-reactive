@@ -1,4 +1,3 @@
-import { PropType, FunctionalValue, FunctionalProp } from "./types";
 import { Lazyable, Raw, onLazyable } from "./Lazyable";
 import { LazyTask } from "./LazyTask";
 import VirtualElement from "./VirtualElements";
@@ -13,7 +12,7 @@ import VirtualElement from "./VirtualElements";
 
 export class LazyProp {
   // 对外暴露的prop，是一个lazyable的对象
-  private prop: PropType = Lazyable({});
+  private prop: X.PropType = Lazyable({});
   // prop的主任务 用来控制任务的运行
   private mainTask?: LazyTask;
   // 对外暴露的方法，用以获取prop
@@ -30,9 +29,9 @@ export class LazyProp {
   >();
 
   private id!: number | string;
-  private key?: FunctionalValue;
-  private props: FunctionalProp[] = [];
-  private children: FunctionalValue[] = [];
+  private key?: X.FunctionalValue;
+  private props: X.FunctionalProp[] = [];
+  private children: X.FunctionalValue[] = [];
   constructor(
     // private id: number | string,
     // private key: FunctionalValue | undefined,
@@ -68,7 +67,7 @@ export class LazyProp {
           () => `${this.id}-${index}`,
           "fragment",
           [],
-          [i as FunctionalValue]
+          [i as X.FunctionalValue]
         )
     );
     this.prop.children = result;
@@ -82,7 +81,7 @@ export class LazyProp {
    * @param i
    * @returns
    */
-  private handleNormal(p: FunctionalProp, i: number) {
+  private handleNormal(p: X.FunctionalProp, i: number) {
     const property = p.property;
     if (property) {
       // 是children的话 什么都不用做
@@ -113,7 +112,7 @@ export class LazyProp {
     }
   }
 
-  private handleRef(value: FunctionalValue) {
+  private handleRef(value: X.FunctionalValue) {
     // 处理REF 主要是返回
     let target: any;
     let key: string | number | symbol | undefined;
@@ -163,7 +162,7 @@ export class LazyProp {
       this.store.set(property, filtResult);
     }
   }
-  private handleRest(p: FunctionalProp, i: number) {
+  private handleRest(p: X.FunctionalProp, i: number) {
     // 有一个任务单独的去监听对象的变化
     const restProperties = new Set<string>();
     // 储存的上一次的值 来判断是否需要重新计算

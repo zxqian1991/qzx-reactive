@@ -35,13 +35,15 @@ export function formatResult(
  */
 export function renderResult(
   _result: FormattedElementResultType,
-  position: IDomPosition
+  position: IDomPosition,
+  level = 0,
+  ctx: Partial<X.IFunctionalContext>
 ) {
   const result = Raw(_result);
   if (Array.isArray(result)) {
-    result.forEach((i) => renderResult(i, position));
+    result.forEach((i) => renderResult(i, position, level, ctx));
   } else if (result instanceof VirtualElement) {
-    return result.exec(position);
+    return result.exec(position, level, ctx);
   }
   lazyDocument.insertElements([result as ITextElement], position);
 }

@@ -1,7 +1,5 @@
-import { IDocument, IDomElement, IDomPosition } from "./types";
-
 let nextTicks: VoidFunction[] = [];
-export class LazyDocument implements IDocument {
+export class LazyDocument implements X.IDocument {
   isTextElement(d: any) {
     return undefined as any;
   }
@@ -17,7 +15,7 @@ export class LazyDocument implements IDocument {
   querySelectorAll() {
     return null;
   }
-  getPosition(elements: IDomElement[]): IDomPosition {
+  getPosition(elements: X.IDomElement[]): X.IDomPosition {
     if (elements.length <= 0) throw new Error("no elements can use");
     const lastElement = elements[elements.length - 1];
     return {
@@ -26,7 +24,7 @@ export class LazyDocument implements IDocument {
       preSibling: lastElement.preSibling,
     };
   }
-  insertElements(elements: IDomElement[], position: IDomPosition) {
+  insertElements(elements: X.IDomElement[], position: X.IDomPosition) {
     if (position.nextSibling) {
       position.parent?.insertBefore(elements, position.nextSibling);
     } else if (position.parent) {
@@ -35,7 +33,7 @@ export class LazyDocument implements IDocument {
       throw new Error("position is invalid!");
     }
   }
-  replaceElements(newElements: IDomElement[], oldElements: IDomElement[]) {
+  replaceElements(newElements: X.IDomElement[], oldElements: X.IDomElement[]) {
     const position = this.getPosition(oldElements);
     oldElements.forEach((ele) => ele.remove());
     this.insertElements(newElements, position);

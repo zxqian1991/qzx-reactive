@@ -1,11 +1,5 @@
 import VirtualElement from "..";
-import {
-  LazyTask,
-  IDomElement,
-  FunctionalValue,
-  runExcludeTask,
-  flattern,
-} from "../..";
+import { LazyTask, IDomElement, FunctionalValue, runExcludeTask } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { formatResult, renderResult } from "../common";
@@ -34,13 +28,20 @@ export default function FragmentRender(virtualElement: VirtualElement) {
               return formatResult(res);
             });
             if (o2.runTime === 1) {
-              renderResult(fr, virtualElement.position!);
+              renderResult(
+                fr,
+                virtualElement.position!,
+                virtualElement.level,
+                virtualElement.ctx
+              );
               virtualElement.result = fr;
             } else {
               const { result: Res } = diffResult(
                 o2.id,
                 fr,
-                virtualElement.result!
+                virtualElement.result!,
+                virtualElement.level,
+                virtualElement.ctx
               );
               virtualElement.result = Res;
             }
@@ -53,12 +54,19 @@ export default function FragmentRender(virtualElement: VirtualElement) {
                 new LazyTask((o3) => {
                   if (o3.runTime === 1) {
                     const child = children[i];
-                    renderResult(child, virtualElement.position!);
+                    renderResult(
+                      child,
+                      virtualElement.position!,
+                      virtualElement.level,
+                      virtualElement.ctx
+                    );
                   } else {
                     const { result } = diffResult(
                       o2.id,
                       children[i],
-                      (virtualElement.result! as any)[i]
+                      (virtualElement.result! as any)[i],
+                      virtualElement.level,
+                      virtualElement.ctx
                     );
                     (virtualElement.result as any)[i] = result;
                   }

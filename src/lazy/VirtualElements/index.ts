@@ -1,18 +1,7 @@
-import {
-  FunctionalValue,
-  ITextElement,
-  LazyTask,
-  IDomElement,
-  runExcludeTask,
-  FunctionalProp,
-  lazyDocument,
-  IDomPosition,
-} from "..";
+import { LazyTask, runExcludeTask, lazyDocument } from "..";
 import { LazyProp } from "../LazyProp";
 import FragmentRender from "./Render/FragmentRender";
-import FunctionalRender, {
-  FunctionalComponent,
-} from "./Render/FunctionalRender";
+import FunctionalRender from "./Render/FunctionalRender";
 import NativeRender from "./Render/NativeRender";
 import { getElements, formatResult, unmountResult } from "./common";
 
@@ -22,26 +11,30 @@ export type ElementResultType =
   | number
   | undefined
   | null
-  | FunctionalValue
+  | X.FunctionalValue
   | Array<ElementResultType>;
 
 export type FormattedElementResultType =
   | VirtualElement
-  | ITextElement
+  | X.ITextElement
   | Array<FormattedElementResultType>;
 
-export type ComponentType = FunctionalComponent<any> | string | "fragment";
+export type ComponentType = X.FunctionalComponent<any> | string | "fragment";
 
 export default class VirtualElement {
   result?: FormattedElementResultType;
-  private mainTask?: LazyTask<IDomElement[]>;
+  private mainTask?: LazyTask<X.IDomElement[]>;
   isFunction = false;
   isFragment = false;
   isNative = false;
-  native?: IDomElement;
+  native?: X.IDomElement;
   Prop?: LazyProp;
 
-  position?: IDomPosition;
+  level = 0;
+
+  position?: X.IDomPosition;
+
+  ctx!: Partial<X.IFunctionalContext>;
 
   getKey() {
     return runExcludeTask(() => {
@@ -50,10 +43,10 @@ export default class VirtualElement {
   }
   constructor(
     public id: number | string,
-    public key: FunctionalValue | undefined,
+    public key: X.FunctionalValue | undefined,
     public component: ComponentType,
-    public props: FunctionalProp[],
-    public children: FunctionalValue[]
+    public props: X.FunctionalProp[],
+    public children: X.FunctionalValue[]
   ) {}
   private execFunctional() {
     this.mainTask = FunctionalRender(this);
@@ -71,25 +64,34 @@ export default class VirtualElement {
     this.mainTask?.stop();
     this.mainTask = undefined!;
   }
-  exec(position: IDomPosition) {
+  exec(
+    position: X.IDomPosition,
+    parentLevel: number,
+    ctx: Partial<X.IFunctionalContext>
+  ) {
     this.position = position;
+    this.ctx = ctx;
     if (typeof this.component === "function") {
+      this.level = parentLevel + 1;
       this.isFunction = true;
       return this.execFunctional();
     } else if (this.component === "fragment") {
+      // fragment维持不变
+      this.level = parentLevel;
       this.isFragment = true;
       return this.execFragment();
     } else if (typeof this.component === "string") {
+      this.level = parentLevel + 1;
       this.isNative = true;
       return this.execNative();
     }
     return [];
   }
-  getElements(): IDomElement[] {
+  getElements(): X.IDomElement[] {
     if (this.isNative) return [this.native!];
     return getElements(formatResult(this.result));
   }
-  unmount(): IDomPosition | undefined {
+  unmount(): X.IDomPosition | undefined {
     if (this.isNative) {
       this.result && unmountResult(this.result);
       this.stop();

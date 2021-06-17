@@ -1,43 +1,15 @@
 import VirtualElement, { ElementResultType } from "..";
-import { LazyTask, PropType, runExcludeTask } from "../..";
+import { LazyTask, runExcludeTask } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { formatResult, renderResult } from "../common";
-import { VoidOrVoidFunction } from "../../types";
 import { Lazyable, Raw } from "../../Lazyable";
 import { useService } from "../../LazyService";
-
-export type FunctionalComponentInited = {
-  onCreated?: (() => VoidOrVoidFunction) | (() => VoidOrVoidFunction)[];
-  onMounted?: (() => VoidOrVoidFunction) | (() => VoidOrVoidFunction)[];
-  onUnMounted?: VoidFunction | VoidFunction[];
-};
-
-export type FunctionalOperate = {
-  nextTick: (h: () => void) => void;
-};
-
-export type FunctionComponentStore<T = any, C = any, S = any, M = any> = {
-  inited: boolean; // 是否已经初始化
-  unmount: (() => void)[]; // 卸载的时候的回调
-  mounted: (() => void)[]; // 组件已装载
-  nextticks: (() => void)[];
-  context: M & {
-    state: T;
-    computed: ComputedType<C>;
-    services: ServiceType<S>;
-  };
-};
-
-export type FunctionalComponent<P extends PropType, S = any> = (
-  p?: P | undefined,
-  state?: FunctionalComponentInited | undefined,
-  q?: FunctionalOperate | undefined
-) => ElementResultType;
+import { cloneLazyableObject } from "../../LazyTask";
 
 let FunctionalComponentIndex = 0;
 let TempRunningFunctionalComponent = 0;
-const FunctionalComponentStoreMap = new Map<number, FunctionComponentStore>();
+const FunctionalComponentStoreMap = new Map<number, X.FunctionComponentStore>();
 
 export default function FunctionalRender(virtualElement: VirtualElement) {
   return new LazyTask(
@@ -52,7 +24,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
           const result = execFunctionalComponent(
             virtualElementFunctionalIndex,
             (data) =>
-              (virtualElement.component as FunctionalComponent<PropType>)(
+              (virtualElement.component as X.FunctionalComponent<X.PropType>)(
                 prop,
                 o2.runTime === 1 ? undefined : data.context
               )
@@ -61,7 +33,26 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
             // 渲染结果
             const fr = runExcludeTask(() => {
               const fr = formatResult(result);
-              renderResult(fr, virtualElement.position!);
+              const data = FunctionalComponentStoreMap.get(
+                virtualElementFunctionalIndex
+              )!;
+              const store: Partial<X.IFunctionalContext> = cloneLazyableObject(
+                virtualElement.ctx,
+                o2.getTask()
+              );
+              data.context.setStore = function <
+                K extends keyof X.IFunctionalContext
+              >(key: K, v: X.IFunctionalContext[K]) {
+                store[key] = v;
+              };
+              // Object.assign(data.context, virtualElement.ctx || {}, {});
+              renderResult(
+                fr,
+                virtualElement.position!,
+                virtualElement.level,
+                // 替换成自己的store
+                store
+              );
               return fr;
             });
             virtualElement.result = fr;
@@ -77,7 +68,9 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
             const { result: Res } = diffResult(
               o2.id,
               formatResult(result),
-              virtualElement.result!
+              virtualElement.result!,
+              virtualElement.level - 1,
+              virtualElement.ctx
             );
             virtualElement.result = Res;
           }
@@ -103,9 +96,9 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
  * execFunctionalComponent(1, () => SomeCom(prop))
  * @param func
  */
-function execFunctionalComponent<P extends PropType>(
+function execFunctionalComponent<P extends X.PropType>(
   index: number,
-  func: (data: FunctionComponentStore) => ElementResultType
+  func: (data: X.FunctionComponentStore) => ElementResultType
 ) {
   // 初始化函数组件的数据
   const lastRunningComponent = TempRunningFunctionalComponent;
@@ -169,53 +162,19 @@ export function useMounted(func: () => void | (() => void)) {
   }
 }
 
-export type ComputedType<T> = T extends Record<string, any>
-  ? {
-      [p in keyof T]: ReturnType<T[p]>;
-    }
-  : T;
-export type ServiceType<T> = T extends Record<
-  string,
-  new (...args: any[]) => any
->
-  ? {
-      [p in keyof T]: InstanceType<T[p]>;
-    }
-  : T;
-
-export type ComponentLifeCycle = {
-  onCreated?: () => VoidOrVoidFunction;
-  onMounted?: () => VoidOrVoidFunction;
-  onUnMounted?: VoidFunction;
-};
-
-type FunctionContextType<T, C, S, M> = M & {
-  state: T;
-  computed: ComputedType<C>;
-  services: ServiceType<S>;
-};
-
-export type FunctionalComponentConfig<T, C, S, M> = {
-  state?: T;
-  computed?: C & ThisType<FunctionContextType<T, C, S, M>>;
-  services?: S & ThisType<FunctionContextType<T, C, S, M>>;
-  lifeCycle?: ComponentLifeCycle & ThisType<FunctionContextType<T, C, S, M>>;
-  methods?: M & ThisType<FunctionContextType<T, C, S, M>>;
-};
-
 export function useCtx<
   T extends Record<string, any>,
   C extends Record<string, (...args: any[]) => any>,
   S extends Record<string, new (...args: any[]) => any>,
   M extends Record<string, (...args: any[]) => any>
 >(
-  option: FunctionalComponentConfig<T, C, S, M>
-): FunctionContextType<T, C, S, M> {
+  option: X.FunctionalComponentConfig<T, C, S, M>
+): X.FunctionContextType<T, C, S, M> {
   assertInFunctionComponent();
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
   if (!data.inited) {
     const state = Lazyable(option.state || {});
-    const services: ServiceType<S> = {} as any;
+    const services: X.ServiceType<S> = {} as any;
     const _computed = Lazyable({} as any);
     const computed = new Proxy(_computed, {
       get(t, k, r) {

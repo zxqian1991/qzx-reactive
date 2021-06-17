@@ -3,7 +3,7 @@ import Lazyman, { lazyDocument } from "./lazy/index";
 import { Lazyable } from "./lazy/Lazyable";
 import HTMLDOMDrive from "./lazy/LazyDom";
 import { generateArray } from "./lazy/utils/Array";
-import { PropType } from "./lazy/types";
+
 import { useCtx } from "./lazy/VirtualElements/Render/FunctionalRender";
 
 let id = 0;
@@ -49,10 +49,19 @@ Lazyman.render(
 
 // 使用useState的好处是不会重复的创建对象而不用 稍微快些
 function A(
-  p: PropType<{ value: number }>,
+  p: X.PropType<{ value: number }>,
   ctx = useCtx({
     state: {
       count: 0,
+      age: 10,
+    },
+    computed: {
+      test() {
+        return this.state.count + this.state.age;
+      },
+      ss() {
+        return this.state.count + this.computed.test;
+      },
     },
   })
 ) {

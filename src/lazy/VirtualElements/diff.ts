@@ -1,17 +1,13 @@
 import VirtualElement, { FormattedElementResultType } from ".";
-import {
-  LazyTask,
-  IDomElement,
-  lazyDocument,
-  flattern,
-  ITextElement,
-} from "..";
+import { lazyDocument } from "..";
 import { getElements, renderResult, unmountResult } from "./common";
 
 export default function diffResult(
   id: number | string, // 保留 方便以后做异步中断
   newResult: FormattedElementResultType,
-  oldResult: FormattedElementResultType
+  oldResult: FormattedElementResultType,
+  level: number,
+  ctx: X.IFunctionalContext
 ) {
   // 都是虚拟DOM 看类型是否一样
   if (
@@ -47,7 +43,7 @@ export default function diffResult(
     // 先获取第一个元素
     let positionIndex = 0;
     let elements = getElements(oldResult[positionIndex]);
-    let nextElement: IDomElement | null = elements[0];
+    let nextElement: X.IDomElement | null = elements[0];
     let parent = nextElement?.parent;
     const newReturnResult: FormattedElementResultType = [];
     for (let i = 0; i < newResult.length; i++) {
@@ -83,7 +79,7 @@ export default function diffResult(
               if (oldPosition !== positionIndex) {
                 const newElements = or.getElements();
                 lazyDocument.insertElements(newElements, {
-                  parent,
+                  parent: parent!,
                   nextSibling: nextElement,
                   preSibling: nextElement?.preSibling || null,
                 });
@@ -99,7 +95,7 @@ export default function diffResult(
                   // 如果这个位置没被用过 那就要用起来
                   elements = getElements(oldResult[positionIndex]);
                   nextElement = elements[0];
-                  parent = nextElement.parent || parent;
+                  parent = nextElement?.parent || parent;
                   // 跳出循环
                   break;
                 }
@@ -109,7 +105,12 @@ export default function diffResult(
           }
         }
       }
-      renderResult(r, { parent, nextSibling: nextElement, preSibling: null });
+      renderResult(
+        r,
+        { parent, nextSibling: nextElement, preSibling: null },
+        level,
+        ctx
+      );
       // 存储结果
       newReturnResult.push(r);
     }
@@ -128,15 +129,15 @@ export default function diffResult(
     lazyDocument.isTextElement(newResult) &&
     lazyDocument.isTextElement(oldResult)
   ) {
-    const newText = (newResult as IDomElement).getText();
-    const oldText = (oldResult as IDomElement).getText();
+    const newText = (newResult as X.IDomElement).getText();
+    const oldText = (oldResult as X.IDomElement).getText();
     if (newText !== oldText) {
-      (oldResult as ITextElement).setText(newText);
+      (oldResult as X.ITextElement).setText(newText);
     }
     return { result: oldResult };
   }
   const position = unmountResult(oldResult);
   if (!position) throw new Error("Old Virtual Element is Error!");
-  renderResult(newResult, position);
+  renderResult(newResult, position, level, ctx);
   return { result: newResult };
 }

@@ -1,5 +1,10 @@
 import { lazyDocument } from "./Document";
-import { onLazyable, LazyableOptType } from "./Lazyable";
+import {
+  onLazyable,
+  LazyableOptType,
+  isLazyabledData,
+  Lazyable,
+} from "./Lazyable";
 import { autobind } from "./utils";
 /**
  * @author [qianzhixiang]
@@ -24,27 +29,6 @@ export function runExcludeTask<T = any>(h: () => T) {
   return h();
 }
 
-export interface ILazyTaskHandlerOption<T = any> {
-  runTime: number;
-  getTask: () => LazyTask;
-  except: <K>(h: () => K) => K;
-  setData: (v: T) => void;
-  getData: () => T | undefined;
-  lastUnsub: (isStop?: boolean) => void;
-  reasons?: TaskChangeReason[];
-  addSubTask: (subTask: LazyTask) => void;
-  removeSubTask: (subTask: LazyTask, stop?: boolean) => void;
-  stop: () => void;
-  id: number;
-}
-
-export interface ILazyTaskOption {
-  autoRun?: boolean; // 是否自动的执行
-  maxRunTime?: number; // 最多执行的次数
-  autoUnsub?: boolean;
-  autoAppendAsSubTask?: boolean;
-  notRecord?: (t: any, k: string | number, v: any) => boolean; // 有可能有的值不需要被记录 这里需要记录
-}
 let id = 0;
 export class LazyTask<T = any> {
   private stopped = false;
@@ -78,9 +62,9 @@ export class LazyTask<T = any> {
   private subTasks = new Set<LazyTask>();
   constructor(
     private handler: (
-      option: ILazyTaskHandlerOption<T>
+      option: X.ILazyTaskHandlerOption<T>
     ) => void | undefined | ((isStop: boolean) => void),
-    private option: ILazyTaskOption = {}
+    private option: X.ILazyTaskOption = {}
   ) {
     const parent = getRunningTask();
     if (
@@ -91,6 +75,7 @@ export class LazyTask<T = any> {
       this.root = parent ? parent.root! : this;
       this.level = parent ? parent.level! + 1 : 1;
       this.path = parent ? `${parent.path}-${this.id}` : `${this.id}`;
+      this.parent?.addSubTask(this);
     }
     if (this.option.autoRun || this.option.autoRun === undefined) {
       this.run();
@@ -153,18 +138,22 @@ export class LazyTask<T = any> {
    * 停止执行任务
    */
   @autobind
-  stop() {
+  stop(fromParent = false) {
     // 清理子任务
     // 清理子任务
-    if (this.stopped) return;
-    removeRely(this);
-    this.subTasks.forEach((t) => t.stop());
-    this.stopped = true;
-    this.unsub?.(true);
-    this.unsub = undefined!;
-    this.subTasks.clear();
-    this.data = undefined!;
-    this.changeReasons = [];
+    if (!fromParent && this.parent) {
+      this.parent.removeSubTask(this);
+    } else {
+      if (this.stopped) return;
+      removeRely(this);
+      this.subTasks.forEach((t) => t.stop());
+      this.stopped = true;
+      this.unsub?.(true);
+      this.unsub = undefined!;
+      this.subTasks.clear();
+      this.data = undefined!;
+      this.changeReasons = [];
+    }
   }
 
   hasStopped() {
@@ -192,7 +181,7 @@ export class LazyTask<T = any> {
   }
   @autobind
   removeSubTask(task: LazyTask, stop = true) {
-    if (stop) task.stop();
+    if (stop) task.stop(true);
     this.subTasks.delete(task);
   }
 }
@@ -323,4 +312,50 @@ export function Computed<T>(h: () => T) {
     value.value = h();
   });
   return value;
+}
+
+// 复制一个lazyable的对象
+export function cloneLazyableObject<T extends Record<string, any>>(
+  object: T,
+  parentTask = getRunningTask()
+) {
+  if (isLazyabledData(object)) {
+    const data: T = Lazyable({}) as T;
+    const tasks = new Map<string, LazyTask>();
+    const task = new LazyTask((o) => {
+      // 监听删除事件
+      const unsubDelete = onLazyable("delete", object, (t, k) => {
+        const task = tasks.get(k as string);
+        if (task) {
+          o.removeSubTask(task);
+        }
+        // 别忘了删除自己对象的key值
+        delete data[k as string];
+      });
+      const unsubAdd = onLazyable("add", object, (t, k, v) => {
+        const tempTask = new LazyTask(() => {
+          (data as any)[k] = object[k as string];
+        });
+        tasks.set(k as string, task);
+        o.addSubTask(tempTask);
+      });
+      for (let key in object) {
+        const tempTask = new LazyTask(() => {
+          data[key] = object[key];
+        });
+        tasks.set(key, task);
+        o.addSubTask(tempTask);
+      }
+      return () => {
+        tasks.clear();
+        unsubDelete();
+        unsubAdd();
+      };
+    });
+    if (parentTask) {
+      parentTask.addSubTask(task);
+    }
+    return data;
+  }
+  return Object.assign({}, object);
 }

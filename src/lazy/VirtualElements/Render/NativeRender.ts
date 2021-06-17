@@ -1,12 +1,5 @@
 import VirtualElement from "..";
-import {
-  LazyTask,
-  IDomElement,
-  lazyDocument,
-  Raw,
-  flattern,
-  onLazyable,
-} from "../..";
+import { LazyTask, lazyDocument, Raw, onLazyable } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { renderResult, unmountResult } from "../common";
@@ -37,18 +30,25 @@ export default function NativeRender(virtualElement: VirtualElement) {
                     const child = prop.children[i];
                     const rawChild = Raw(child);
                     if (o4.runTime === 1) {
-                      renderResult(rawChild, {
-                        parent: virtualElement.native!,
-                        nextSibling: null,
-                        preSibling: null,
-                      });
+                      renderResult(
+                        rawChild,
+                        {
+                          parent: virtualElement.native!,
+                          nextSibling: null,
+                          preSibling: null,
+                        },
+                        virtualElement.level,
+                        virtualElement.ctx
+                      );
                     } else {
                       const oldChildren = virtualElement.result as any[];
                       const oldChild = oldChildren[i];
                       const { result } = diffResult(
                         `${o3.id}-${i}`,
                         rawChild,
-                        oldChild
+                        oldChild,
+                        virtualElement.level - 1,
+                        virtualElement.ctx
                       );
                       oldChildren[i] = result;
                     }
