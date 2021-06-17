@@ -1,15 +1,14 @@
 import VirtualElement from "..";
-import { LazyTask, IDomElement, FunctionalValue, runExcludeTask } from "../..";
+import { LazyTask, runExcludeTask } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
 import { formatResult, renderResult } from "../common";
 import { Raw } from "../../Lazyable";
 
 export default function FragmentRender(virtualElement: VirtualElement) {
-  return new LazyTask<IDomElement[]>(
+  return new LazyTask<X.IDomElement[]>(
     (o1) => {
       // 这是被处理过的fragment
-
       virtualElement.Prop = o1.except(() => {
         return new LazyProp(virtualElement);
       });
@@ -22,7 +21,7 @@ export default function FragmentRender(virtualElement: VirtualElement) {
             const rawChildren = Raw(children);
             if (rawChildren.length <= 0)
               throw new Error("formatted fragment can not be Empty");
-            const h = children[0] as FunctionalValue;
+            const h = children[0] as X.FunctionalValue;
             const res = h();
             const fr = runExcludeTask(() => {
               return formatResult(res);

@@ -5,24 +5,8 @@ import FunctionalRender from "./Render/FunctionalRender";
 import NativeRender from "./Render/NativeRender";
 import { getElements, formatResult, unmountResult } from "./common";
 
-export type ElementResultType =
-  | VirtualElement
-  | string
-  | number
-  | undefined
-  | null
-  | X.FunctionalValue
-  | Array<ElementResultType>;
-
-export type FormattedElementResultType =
-  | VirtualElement
-  | X.ITextElement
-  | Array<FormattedElementResultType>;
-
-export type ComponentType = X.FunctionalComponent<any> | string | "fragment";
-
-export default class VirtualElement {
-  result?: FormattedElementResultType;
+export default class VirtualElement implements X.VirtualElement {
+  result?: X.FormattedElementResultType;
   private mainTask?: LazyTask<X.IDomElement[]>;
   isFunction = false;
   isFragment = false;
@@ -36,6 +20,8 @@ export default class VirtualElement {
 
   ctx!: Partial<X.IFunctionalContext>;
 
+  injectChild?: X.IInjectChild;
+
   getKey() {
     return runExcludeTask(() => {
       return this.key?.();
@@ -44,7 +30,7 @@ export default class VirtualElement {
   constructor(
     public id: number | string,
     public key: X.FunctionalValue | undefined,
-    public component: ComponentType,
+    public component: X.ComponentType,
     public props: X.FunctionalProp[],
     public children: X.FunctionalValue[]
   ) {}

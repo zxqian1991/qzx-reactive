@@ -12,7 +12,7 @@ import VirtualElement from "./VirtualElements";
 
 export class LazyProp {
   // 对外暴露的prop，是一个lazyable的对象
-  private prop: X.PropType = Lazyable({});
+  private prop: X.PropType<{}> = Lazyable({});
   // prop的主任务 用来控制任务的运行
   private mainTask?: LazyTask;
   // 对外暴露的方法，用以获取prop
@@ -98,9 +98,9 @@ export class LazyProp {
         (o) => {
           // 重新赋值属性 并重新记录依赖
           const value = p.value();
-          const originValue = rawProp[property];
+          const originValue = (rawProp as any)[property];
           if (value !== originValue) {
-            this.prop[property] = value;
+            (this.prop as any)[property] = value;
           }
         },
         {
@@ -199,10 +199,10 @@ export class LazyProp {
               () => {
                 // 直接赋值
                 if (restValue.hasOwnProperty(property)) {
-                  const originValue = rawProp[property as string];
+                  const originValue = (rawProp as any)[property as string];
                   const value = restValue[property];
                   if (originValue !== value) {
-                    this.prop[property as string] = value;
+                    (this.prop as any)[property as string] = value;
                   }
                 } else {
                   // 不存在这个属性了  表示这个属性被删了
@@ -234,7 +234,7 @@ export class LazyProp {
             const pTask = new LazyTask(
               () => {
                 if (restValue.hasOwnProperty(property)) {
-                  this.prop[property] = restValue[property];
+                  (this.prop as any)[property] = restValue[property];
                 } else {
                   // 不存在这个属性了  表示这个属性被删了
                   restProperties.delete(property);

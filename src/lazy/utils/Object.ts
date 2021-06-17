@@ -118,7 +118,7 @@ export function joinObject(
   let isFirst = true;
   for (let i in object) {
     const v = h(object[i], i);
-    str += !isFirst ? s : "" + v;
+    str += (!isFirst ? s : "") + v;
     if (isFirst) {
       isFirst = false;
     }

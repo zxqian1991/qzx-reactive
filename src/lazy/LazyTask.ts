@@ -230,11 +230,6 @@ function removeRely(task: LazyTask) {
   });
 }
 
-// let count = 0;
-// lazyDocument.onIdle(() => {
-//   console.log(count);
-//   count = 0;
-// });
 onLazyable("get", (t, k, v) => {
   // count++;
   // 任务得允许被记录

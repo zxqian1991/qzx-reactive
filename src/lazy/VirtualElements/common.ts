@@ -1,23 +1,13 @@
-import VirtualElement, {
-  ElementResultType,
-  FormattedElementResultType,
-} from ".";
-import {
-  lazyDocument,
-  ITextElement,
-  IDomElement,
-  Raw,
-  flattern,
-  IDomPosition,
-} from "..";
+import VirtualElement from ".";
+import { lazyDocument, Raw, flattern } from "..";
 
 export function formatResult(
-  result: ElementResultType | FormattedElementResultType
-): FormattedElementResultType {
+  result: X.ElementResultType | X.FormattedElementResultType
+): X.FormattedElementResultType {
   if (Array.isArray(result) && result.length > 0) {
     return result.map((i: any) => formatResult(i));
   } else if (lazyDocument.isTextElement(result)) {
-    return result as ITextElement;
+    return result as X.ITextElement;
   } else if (result instanceof VirtualElement) {
     return result;
   } else if (typeof result === "function") {
@@ -34,18 +24,19 @@ export function formatResult(
  * @returns
  */
 export function renderResult(
-  _result: FormattedElementResultType,
-  position: IDomPosition,
+  _result: X.FormattedElementResultType,
+  position: X.IDomPosition,
   level = 0,
   ctx: Partial<X.IFunctionalContext>
 ) {
   const result = Raw(_result);
   if (Array.isArray(result)) {
     result.forEach((i) => renderResult(i, position, level, ctx));
+    return;
   } else if (result instanceof VirtualElement) {
-    return result.exec(position, level, ctx);
+    result.exec(position, level, ctx);
   }
-  lazyDocument.insertElements([result as ITextElement], position);
+  lazyDocument.insertElements([result as X.ITextElement], position);
 }
 
 /**
@@ -54,7 +45,9 @@ export function renderResult(
  * @param exec
  * @returns
  */
-export function getElements(result: FormattedElementResultType): IDomElement[] {
+export function getElements(
+  result: X.FormattedElementResultType
+): X.IDomElement[] {
   if (Array.isArray(result)) {
     return flattern(
       result.map((i) => getElements(i)),
@@ -64,20 +57,44 @@ export function getElements(result: FormattedElementResultType): IDomElement[] {
     if (result.isNative) return [result.native!];
     return result.getElements();
   }
-  return [result as ITextElement];
+  return [result as X.ITextElement];
 }
 
 export function unmountResult(
-  result: FormattedElementResultType
-): IDomPosition | undefined {
+  result: X.FormattedElementResultType
+): X.IDomPosition | undefined {
   if (Array.isArray(result)) {
     const positions = result.map((r) => unmountResult(r));
     return positions[positions.length - 1];
   } else if (result instanceof VirtualElement) {
     return result.unmount();
   } else {
-    const position = lazyDocument.getPosition([result]);
-    result.remove();
+    const position = lazyDocument.getPosition([result as X.IDomElement]);
+    (result as X.IDomElement).remove();
     return position;
   }
+}
+
+export function injectChild(child: VirtualElement, inject: X.IInjectChild) {
+  const children = child.children;
+  child.children = children.map((child) => () => {
+    const res = child();
+    if (res instanceof VirtualElement) {
+      if (res.isFragment) {
+        injectChild(res, inject);
+      } else {
+        res.injectChild = inject;
+      }
+      return res;
+    } else if (Array.isArray(res)) {
+      const data = flattern(res);
+      data.forEach((i) => {
+        if (i instanceof VirtualElement) {
+          injectChild(i, inject);
+        }
+      });
+      return data;
+    }
+    return res;
+  });
 }

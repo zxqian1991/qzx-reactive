@@ -1,8 +1,7 @@
-import { IDocument, IDomElement } from "./types";
 import { joinObject } from "./utils/Object";
 import { getRunningTask, LazyTask } from "./LazyTask";
 
-class MyBaseElement implements IDomElement {
+class MyBaseElement implements X.IDomElement {
   isText() {
     return this.dom instanceof Text;
   }
@@ -17,7 +16,7 @@ class MyBaseElement implements IDomElement {
     }
   }
   constructor(private dom: Text | HTMLElement) {}
-  append(eles: IDomElement[] | IDomElement) {
+  append(eles: X.IDomElement[] | X.IDomElement) {
     if (Array.isArray(eles)) {
       eles.forEach((ele) => this.append(ele));
     } else {
@@ -26,22 +25,22 @@ class MyBaseElement implements IDomElement {
       }
     }
   }
-  get nextSibling(): IDomElement | null {
+  get nextSibling(): X.IDomElement | null {
     const sib = this.dom.nextSibling || this.dom.nextElementSibling;
     if (!sib) return null;
     return new MyBaseElement(sib as any);
   }
-  get preSibling(): IDomElement | null {
+  get preSibling(): X.IDomElement | null {
     const sib = this.dom.previousSibling || this.dom.previousElementSibling;
     if (!sib) return null;
     return new MyBaseElement(sib as any);
   }
-  get parent(): IDomElement | null {
+  get parent(): X.IDomElement | null {
     const parent = this.dom.parentElement || this.dom.parentNode;
     if (!parent) return null;
     return new MyBaseElement(parent as any);
   }
-  insertBefore(doms: IDomElement[], target: IDomElement | null) {
+  insertBefore(doms: X.IDomElement[], target: X.IDomElement | null) {
     if (target) {
       if (!(target instanceof MyBaseElement))
         throw new Error("target to insert must be MyBaseElement Type");
@@ -114,7 +113,7 @@ class MyBaseElement implements IDomElement {
   }
 }
 
-const HTMLDOMDrive: IDocument = {
+const HTMLDOMDrive: X.IDocument = {
   createTextElement(v: string) {
     return new MyBaseElement(new Text(v));
   },
@@ -178,6 +177,7 @@ function classNames(...classnames: TypeOfClassNames[]): string | undefined {
  */
 function style(value: string | Record<string, any>) {
   if (typeof value === "string") return value.trim();
-  if (typeof value === "object") return joinObject(value, "&").trim();
+  if (typeof value === "object")
+    return joinObject(value, ";", (v, k) => `${k}: ${v}`).trim();
   return undefined;
 }

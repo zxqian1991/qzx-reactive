@@ -1,8 +1,8 @@
-import VirtualElement, { ElementResultType } from "..";
+import VirtualElement from "..";
 import { LazyTask, runExcludeTask } from "../..";
 import { LazyProp } from "../../LazyProp";
 import diffResult from "../diff";
-import { formatResult, renderResult } from "../common";
+import { formatResult, renderResult, injectChild } from "../common";
 import { Lazyable, Raw } from "../../Lazyable";
 import { useService } from "../../LazyService";
 import { cloneLazyableObject } from "../../LazyTask";
@@ -18,6 +18,11 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
       // 设置当前函数组件的一个唯一ID
       const virtualElementFunctionalIndex = ++FunctionalComponentIndex;
       const prop = virtualElement.Prop?.getProp();
+      o1.except(() => {
+        if (virtualElement.injectChild) {
+          virtualElement.injectChild(virtualElement, prop);
+        }
+      });
       o1.addSubTask(
         new LazyTask((o2) => {
           // 执行函数 支持hooks基础功能
@@ -30,13 +35,21 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
                 o2.runTime === 1 ? undefined : data.context
               )
           );
+          const data = FunctionalComponentStoreMap.get(
+            virtualElementFunctionalIndex
+          )!;
+          if (data.injectChildProp) {
+            Raw(prop)?.children?.forEach((child) => {
+              if (child instanceof VirtualElement) {
+                injectChild(child, data.injectChildProp!);
+              }
+            });
+          }
           if (o2.runTime === 1) {
             // 渲染结果
             const fr = runExcludeTask(() => {
               const fr = formatResult(result);
-              const data = FunctionalComponentStoreMap.get(
-                virtualElementFunctionalIndex
-              )!;
+
               renderResult(
                 fr,
                 virtualElement.position!,
@@ -47,10 +60,6 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
               return fr;
             });
             virtualElement.result = fr;
-            // 获取数据
-            const data = FunctionalComponentStoreMap.get(
-              virtualElementFunctionalIndex
-            );
             // 调用初始化数据
             if (data) {
               data.mounted.forEach((u) => u());
@@ -90,7 +99,7 @@ export default function FunctionalRender(virtualElement: VirtualElement) {
 function execFunctionalComponent<P extends X.PropType>(
   index: number,
   virtualElement: VirtualElement,
-  func: (data: X.FunctionComponentStore) => ElementResultType
+  func: (data: X.FunctionComponentStore) => X.ElementResultType
 ) {
   // 初始化函数组件的数据
   const lastRunningComponent = TempRunningFunctionalComponent;
@@ -166,6 +175,7 @@ export function useCtx<
   assertInFunctionComponent();
   const data = FunctionalComponentStoreMap.get(TempRunningFunctionalComponent)!;
   if (!data.inited) {
+    data.injectChildProp = option.injectChildProp!;
     const state = Lazyable(option.state || {});
     const services: X.ServiceType<S> = {} as any;
     const _computed = Lazyable({} as any);
@@ -209,13 +219,16 @@ export function useCtx<
       for (let life in option.lifeCycle) {
         switch (life) {
           case "onCreated":
-            useCreated(option.lifeCycle[life]!);
+            option.lifeCycle[life] &&
+              useCreated(option.lifeCycle[life]!.bind(ctx!));
             break;
           case "onMounted":
-            useMounted(option.lifeCycle[life]!);
+            option.lifeCycle[life] &&
+              useMounted(option.lifeCycle[life]!.bind(ctx));
             break;
           case "onUnMounted":
-            useUnMounted(option.lifeCycle[life]!);
+            option.lifeCycle[life] &&
+              useUnMounted(option.lifeCycle[life]!.bind(ctx));
             break;
         }
       }

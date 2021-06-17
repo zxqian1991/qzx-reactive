@@ -7,7 +7,44 @@ declare namespace JSX {
 }
 
 declare namespace X {
-  import VirtualElement from "./lazy/VirtualElements/index";
+  export interface VirtualElement {
+    id: number | string;
+    key: X.FunctionalValue | undefined;
+    component: ComponentType;
+    props: X.FunctionalProp[];
+    children: X.FunctionalValue[];
+    result?: FormattedElementResultType;
+    isFunction: boolean;
+    isFragment: boolean;
+    isNative: boolean;
+    native?: X.IDomElement;
+    Prop?: LazyProp;
+    level: number;
+    position?: X.IDomPosition;
+    ctx: Partial<X.IFunctionalContext>;
+    stop: () => void;
+    getElements: () => IDomElement[];
+    unmount: () => void;
+  }
+
+  export type IInjectChild = (child: VirtualElement, p: PropType<any>) => void;
+
+  export type ElementResultType =
+    | VirtualElement
+    | string
+    | number
+    | undefined
+    | null
+    | X.FunctionalValue
+    | Array<ElementResultType>;
+
+  export type FormattedElementResultType =
+    | VirtualElement
+    | X.ITextElement
+    | Array<FormattedElementResultType>;
+
+  export type ComponentType = X.FunctionalComponent<any> | string | "fragment";
+
   export type FunctionalComponentInited = {
     onCreated?: (() => VoidOrVoidFunction) | (() => VoidOrVoidFunction)[];
     onMounted?: (() => VoidOrVoidFunction) | (() => VoidOrVoidFunction)[];
@@ -28,6 +65,7 @@ declare namespace X {
     nextticks: (() => void)[];
     context: FunctionContextType<T, C, S, M>;
     virtualElement: VirtualElement;
+    injectChildProp?: IInjectChild;
   };
 
   export type FunctionalComponent<P extends PropType, S = any> = (
@@ -73,6 +111,8 @@ declare namespace X {
     services?: S & ThisType<FunctionContextType<T, C, S, M>>;
     lifeCycle?: ComponentLifeCycle & ThisType<FunctionContextType<T, C, S, M>>;
     methods?: M & ThisType<FunctionContextType<T, C, S, M>>;
+    // child是不确定的有可能需要手动的注入内容
+    injectChildProp?: IInjectChild;
   };
 
   export type FunctionalValue = () => any;
@@ -85,7 +125,7 @@ declare namespace X {
     key?: any;
   }
 
-  export type PropType<T extends Record<string, any> = any> = T &
+  export type PropType<T extends Record<string, any> = {}> = T &
     ChildrenType &
     KeyType;
 

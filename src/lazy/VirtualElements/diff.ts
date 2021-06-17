@@ -1,6 +1,8 @@
-import VirtualElement, { FormattedElementResultType } from ".";
+import VirtualElement from ".";
 import { lazyDocument } from "..";
 import { getElements, renderResult, unmountResult } from "./common";
+
+type FormattedElementResultType = X.FormattedElementResultType;
 
 export default function diffResult(
   id: number | string, // 保留 方便以后做异步中断

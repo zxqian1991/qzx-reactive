@@ -16,22 +16,28 @@ export default function NativeRender(virtualElement: VirtualElement) {
       );
       virtualElement.Prop = o1.except(() => new LazyProp(virtualElement));
       const prop = virtualElement.Prop.getProp();
+      o1.except(() => {
+        if (virtualElement.injectChild) {
+          virtualElement.injectChild(virtualElement, prop);
+        }
+      });
+
       const rawProp = Raw(prop);
       const handle = (p: string, cb: (t: LazyTask) => void) => {
         if (p === "children") {
           // children的需要特殊处理
           return new LazyTask<VirtualElement[]>((o3) => {
             if (rawProp.hasOwnProperty(p)) {
-              const rawChildren = rawProp.children;
+              const rawChildren = rawProp.children! as VirtualElement[];
               virtualElement.result = rawChildren;
               for (let i = 0; i < rawChildren.length; i++) {
                 o3.addSubTask(
                   new LazyTask((o4) => {
-                    const child = prop.children[i];
+                    const child = prop.children![i];
                     const rawChild = Raw(child);
                     if (o4.runTime === 1) {
                       renderResult(
-                        rawChild,
+                        rawChild as VirtualElement,
                         {
                           parent: virtualElement.native!,
                           nextSibling: null,
@@ -45,7 +51,7 @@ export default function NativeRender(virtualElement: VirtualElement) {
                       const oldChild = oldChildren[i];
                       const { result } = diffResult(
                         `${o3.id}-${i}`,
-                        rawChild,
+                        rawChild as VirtualElement,
                         oldChild,
                         virtualElement.level - 1,
                         virtualElement.ctx
@@ -67,20 +73,16 @@ export default function NativeRender(virtualElement: VirtualElement) {
           return new LazyTask((o3) => {
             // 对于children要做特殊心理
             if (rawProp.hasOwnProperty(p)) {
-              const newV = prop[p];
-              const oldV = o3.getData();
-              if (newV !== oldV) {
-                virtualElement.native?.removeAttribute(p, oldV);
-                o3.setData(newV);
-                // 设置属性
-                virtualElement.native?.setAttribute(p, newV);
-              }
+              const newV = (prop as any)[p];
+              o3.setData(newV);
+              virtualElement.native?.setAttribute(p, newV);
+              if (o3.runTime !== 1) console.log("re run");
             } else {
               // 移除属性
               cb(o3.getTask());
             }
-            return (isStop) =>
-              isStop && virtualElement.native?.removeAttribute(p, o3.getData());
+            return () =>
+              virtualElement.native?.removeAttribute(p, o3.getData());
           });
         }
       };
